@@ -3,8 +3,9 @@
 > **About this file (v3.0.0):** Lean version optimized for context efficiency. Core principles here; detailed patterns loaded on-demand via skills.
 >
 > **Architecture:**
-> - **CLAUDE.md** (this file): Core philosophy + quick reference (~100 lines, always loaded)
-> - **Skills**: Detailed patterns loaded on-demand (tdd, testing, mutation-testing, test-design-reviewer, typescript-strict, functional, refactoring, expectations, planning, front-end-testing, react-testing)
+> - **CLAUDE.md** (this file): Core philosophy + quick reference (~160 lines, always loaded)
+> - **Skills**: Detailed patterns loaded on-demand (tdd, testing, mutation-testing, test-design-reviewer, typescript-strict, functional, refactoring, expectations, planning, story-splitting, front-end-testing, react-testing, ci-debugging, hexagonal-architecture, domain-driven-design, twelve-factor, api-design, cli-design, folder-structure, finding-seams, characterisation-tests, production-parity-skill-builder, storyboard, teach-me, diagrams, find-skills, find-gaps)
+> - **External skills**: Loaded on-demand from community repos (impeccable + 17 steering commands from [pbakaus/impeccable](https://github.com/pbakaus/impeccable), 6 web quality skills from [addyosmani/web-quality-skills](https://github.com/addyosmani/web-quality-skills), 3 Next.js skills from [vercel-labs/next-skills](https://skills.sh/vercel-labs/next-skills), grill-me from [mattpocock/skills](https://skills.sh/mattpocock/skills/grill-me), seo-audit from [coreyhaines31/marketingskills](https://skills.sh/coreyhaines31/marketingskills/seo-audit))
 > - **Agents**: Specialized subprocesses for verification and analysis
 >
 > **Previous versions:**
@@ -32,7 +33,7 @@ I follow Test-Driven Development (TDD) with a strong emphasis on behavior-driven
 **Preferred Tools:**
 
 - **Language**: TypeScript (strict mode)
-- **Testing**: Jest/Vitest + React Testing Library
+- **Testing**: Vitest (prefer Browser Mode for UI tests) + Testing Library
 - **State Management**: Prefer immutable patterns
 
 ## Testing Principles
@@ -62,6 +63,7 @@ For verifying test effectiveness through mutation analysis, load the `mutation-t
 - Use schemas at trust boundaries, plain types for internal logic
 
 For detailed TypeScript patterns and rationale, load the `typescript-strict` skill.
+For API and interface design patterns, load the `api-design` skill.
 
 ## Code Style
 
@@ -79,19 +81,47 @@ For detailed patterns and examples, load the `functional` skill.
 
 ## Development Workflow
 
-**Core principle**: RED-GREEN-REFACTOR in small, known-good increments. TDD is the fundamental practice.
+**Core principle**: RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR in small, known-good increments. TDD is the fundamental practice.
 
 **Quick reference:**
 - RED: Write failing test first (NO production code without failing test)
 - GREEN: Write MINIMUM code to pass test
+- MUTATE: Run mutation testing to verify test effectiveness, produce a report
+- KILL MUTANTS: Address surviving mutants (ask human when value is ambiguous)
 - REFACTOR: Assess improvement opportunities (only refactor if adds value)
 - **Wait for commit approval** before every commit
 - Each increment leaves codebase in working state
-- Capture learnings as they occur, merge at end
-
 For detailed TDD workflow, load the `tdd` skill.
+For implementation of any planned slice, load `tdd`, `testing`, `mutation-testing`, and `refactoring` before code changes begin.
 For refactoring methodology, load the `refactoring` skill.
-For significant work, load the `planning` skill for three-document model (PLAN.md, WIP.md, LEARNINGS.md).
+For fuzzy product/design decisions, load `grill-me` to pressure-test the decision tree before writing stories or plans.
+For broad stories, epics, features, or backlog items, load `story-splitting` to create child stories before planning.
+For tightening an existing story, plan, acceptance criteria set, or mock spec, load `find-gaps` to write confirmed answers back into the artifact.
+For significant implementation work, load `planning` to turn one selected child story or narrow capability into PR-sized plans in `plans/`.
+For CI failure diagnosis, load the `ci-debugging` skill.
+For hexagonal architecture projects, load the `hexagonal-architecture` skill.
+For Domain-Driven Design projects, load the `domain-driven-design` skill.
+For 12-factor service projects, load the `twelve-factor` skill.
+For CLI tool design (stream separation, format flags, exit codes, composability), load the `cli-design` skill.
+For designing or auditing source trees (where files belong, feature folders, import boundaries), load the `folder-structure` skill.
+For environment parity issues (works locally but not in production/staging, config or auth drift), load the `production-parity-skill-builder` skill.
+For making untestable code testable, load the `finding-seams` skill.
+For documenting existing behavior before changes, load the `characterisation-tests` skill.
+For multi-surface design audits before code (embed every mock in a scope on one reviewable page with flow diagram + gap cards + per-mock audit checklists), load the `storyboard` skill.
+For structured learning of any topic (interactive tutoring, courses, quizzes), use `/teach-me [topic]`.
+For discovering and installing agent skills from the open ecosystem (`npx skills`), load the `find-skills` skill.
+For adversarial review of plans, acceptance criteria, stories, or design mocks — one question at a time, turning each answer into a new AC / plan paragraph / mock-state spec written back to the source of truth — load the `find-gaps` skill.
+For relentless decision-tree interrogation before story splitting, planning, or implementation — one question at a time, with recommended answers and codebase exploration where useful — load the `grill-me` skill.
+
+**Project onboarding:** Run `/setup` in any new project to detect its tech stack and generate project-level CLAUDE.md, hooks, commands, and PR review agent in one shot. This replaces the need for `/init`.
+
+**Project-level hooks:** Projects should add a PostToolUse hook in `.claude/settings.json` to run typecheck after Write/Edit on .ts/.tsx files. Use `/setup` to generate this automatically, or use the prettier/eslint hook in this repo's `claude/.claude/settings.json` as a template (note: the curl installer does not install settings.json — only the stow-based install does).
+
+## Output Guardrails
+
+- **Write to files, not chat** — When asked to produce a plan, document, or artifact, always persist it to a file. You may also present it inline for approval, but the file is the source of truth.
+- **Plan-only mode** — When asked for a plan, design, or document only, produce ONLY that artifact. Do not write production code, test code, or make any implementation changes unless explicitly asked.
+- **Incremental output** — When exploring a codebase, produce a first draft of output within 3-4 tool calls. Refine iteratively rather than front-loading all exploration before producing anything.
 
 ## Working with Claude
 

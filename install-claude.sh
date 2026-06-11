@@ -2,12 +2,17 @@
 #
 # Install CLAUDE.md development framework to ~/.claude/
 #
+# Skills are installed via the skills.sh CLI (npx skills), which supports
+# Claude Code, Cursor, Codex, Copilot, OpenCode, Gemini CLI, and 40+ other
+# agents. CLAUDE.md, slash commands, and agents are Claude-Code-specific
+# artifacts and are still downloaded directly from this repo.
+#
 # Usage:
 #   ./install-claude.sh                    # Install everything (CLAUDE.md + skills + commands + agents)
 #   ./install-claude.sh --claude-only      # Install only CLAUDE.md
 #   ./install-claude.sh --no-agents        # Install without agents
 #   ./install-claude.sh --skills-only      # Install only skills
-#   ./install-claude.sh --version v3.0.0   # Install specific version
+#   ./install-claude.sh --version v3.0.0   # Install specific version (for CLAUDE.md/commands/agents)
 #   ./install-claude.sh --with-opencode    # Also install OpenCode configuration
 #
 # One-liner installation:
@@ -31,8 +36,23 @@ INSTALL_COMMANDS=true
 INSTALL_AGENTS=true
 INSTALL_OPENCODE=false
 INSTALL_EXTERNAL=true
+INSTALL_IMPECCABLE=true
 BASE_URL="https://raw.githubusercontent.com/citypaul/.dotfiles"
-WEB_QUALITY_SKILLS_URL="https://raw.githubusercontent.com/addyosmani/web-quality-skills"
+
+# Skill sources on skills.sh (https://skills.sh)
+OWN_SKILLS_REPO="citypaul/.dotfiles"
+WEB_QUALITY_SKILLS_REPO="addyosmani/web-quality-skills"
+NEXT_SKILLS_REPO="vercel-labs/next-skills"
+IMPECCABLE_SKILLS_REPO="pbakaus/impeccable"
+MATTPOCOCK_SKILLS_REPO="https://github.com/mattpocock/skills"
+MARKETING_SKILLS_REPO="coreyhaines31/marketingskills"
+GRILL_ME_SKILL="grill-me"
+SEO_AUDIT_SKILL="seo-audit"
+
+# Agents to target when installing skills via `npx skills add`.
+# Built up from --agent/--with-opencode flags; default is claude-code only.
+SKILL_AGENTS=(claude-code)
+INCLUDE_CLAUDE_CODE=true
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -61,8 +81,21 @@ while [[ $# -gt 0 ]]; do
       INSTALL_AGENTS=true
       shift
       ;;
+    --agent)
+      if [[ -z "${2:-}" || "$2" == --* ]]; then
+        echo -e "${RED}Error: --agent requires a value (e.g. codex, cursor, copilot)${NC}"
+        exit 1
+      fi
+      SKILL_AGENTS+=("$2")
+      shift 2
+      ;;
+    --no-claude-code)
+      INCLUDE_CLAUDE_CODE=false
+      shift
+      ;;
     --with-opencode)
       INSTALL_OPENCODE=true
+      SKILL_AGENTS+=(opencode)
       shift
       ;;
     --opencode-only)
@@ -75,6 +108,11 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-external)
       INSTALL_EXTERNAL=false
+      INSTALL_IMPECCABLE=false
+      shift
+      ;;
+    --no-impeccable)
+      INSTALL_IMPECCABLE=false
       shift
       ;;
     --version)
@@ -85,29 +123,45 @@ while [[ $# -gt 0 ]]; do
       cat << EOF
 Install CLAUDE.md development framework to ~/.claude/
 
+Skills install via skills.sh (multi-agent); other artifacts (CLAUDE.md,
+commands, agents) download directly from this repo.
+
 Usage:
   $0 [OPTIONS]
 
 Options:
-  --claude-only      Install only CLAUDE.md
-  --no-agents        Install without agents
-  --skills-only      Install only skills
-  --agents-only      Install only agents
-  --with-opencode    Also install OpenCode configuration
-  --opencode-only    Install only OpenCode configuration
-  --no-external      Skip external community skills (web-quality-skills)
-  --version VERSION  Install specific version (default: main)
-  --help, -h         Show this help message
+  --claude-only        Install only CLAUDE.md
+  --no-agents          Install without agents
+  --skills-only        Install only skills (via skills.sh)
+  --agents-only        Install only agents
+  --agent NAME         Also install skills for agent NAME (repeatable:
+                       --agent codex --agent cursor). Default target is
+                       claude-code. See skills.sh for the full agent list.
+  --no-claude-code     Skip the default claude-code target for skills
+                       (use with --agent to target other agents only)
+  --with-opencode      Shorthand for --agent opencode + install OpenCode config
+  --opencode-only      Install only OpenCode configuration (no skills/agents/commands)
+  --no-external        Skip all external community skills (web-quality-skills + next-skills + impeccable + grill-me + seo-audit)
+  --no-impeccable      Skip impeccable design skills only
+  --version VERSION    Version for CLAUDE.md/commands/agents (default: main). Skills always latest.
+  --help, -h           Show this help message
+
+Default external skill sources:
+  addyosmani/web-quality-skills
+  vercel-labs/next-skills
+  pbakaus/impeccable
+  mattpocock/skills --skill grill-me
+  coreyhaines31/marketingskills --skill seo-audit
 
 Examples:
   # Install everything (recommended)
   $0
 
-  # Install specific version
-  $0 --version v3.0.0
+  # Install skills for Claude Code + Codex + Cursor
+  $0 --skills-only --agent codex --agent cursor
 
-  # Install without agents
-  $0 --no-agents
+  # Install only skills for Codex (no Claude Code)
+  $0 --skills-only --no-claude-code --agent codex
 
   # One-liner installation
   curl -fsSL https://raw.githubusercontent.com/citypaul/.dotfiles/main/install-claude.sh | bash
@@ -123,11 +177,54 @@ EOF
   esac
 done
 
+# Honour --no-claude-code by stripping claude-code from the target list
+if [[ "$INCLUDE_CLAUDE_CODE" == false ]]; then
+  _filtered=()
+  for agent in "${SKILL_AGENTS[@]}"; do
+    [[ "$agent" == "claude-code" ]] && continue
+    _filtered+=("$agent")
+  done
+  SKILL_AGENTS=("${_filtered[@]}")
+fi
+
+# De-duplicate agent list while preserving order
+if [[ ${#SKILL_AGENTS[@]} -gt 0 ]]; then
+  _deduped=()
+  for agent in "${SKILL_AGENTS[@]}"; do
+    _seen=false
+    for existing in "${_deduped[@]}"; do
+      if [[ "$existing" == "$agent" ]]; then
+        _seen=true
+        break
+      fi
+    done
+    [[ "$_seen" == true ]] && continue
+    _deduped+=("$agent")
+  done
+  SKILL_AGENTS=("${_deduped[@]}")
+fi
+
+# Validate: if we're installing skills, we need at least one agent to target
+if [[ "$INSTALL_SKILLS" == true && ${#SKILL_AGENTS[@]} -eq 0 ]]; then
+  echo -e "${RED}Error: no agents selected for skill install${NC}"
+  echo -e "${YELLOW}Pass --agent <name> or drop --no-claude-code${NC}"
+  exit 1
+fi
+
 echo -e "${BLUE}╔════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║  CLAUDE.md Development Framework Installer         ║${NC}"
 printf "${BLUE}║  Version: %-40s║${NC}\n" "$VERSION"
 echo -e "${BLUE}╚════════════════════════════════════════════════════╝${NC}"
 echo ""
+
+# Check for npx if we'll need it
+if [[ "$INSTALL_SKILLS" == true ]]; then
+  if ! command -v npx >/dev/null 2>&1; then
+    echo -e "${RED}Error: npx is required to install skills via skills.sh${NC}"
+    echo -e "${YELLOW}Install Node.js (https://nodejs.org) or rerun with --claude-only / --agents-only${NC}"
+    exit 1
+  fi
+fi
 
 # Function to download a file
 download_file() {
@@ -151,22 +248,107 @@ backup_file() {
   local file="$1"
 
   if [[ -f "$file" ]]; then
-    local backup="${file}.backup.$(date +%Y%m%d_%H%M%S)"
+    local backup
+    backup="${file}.backup.$(date +%Y%m%d_%H%M%S)"
     echo -e "${YELLOW}→${NC} Backing up existing file to $backup"
     mv "$file" "$backup"
   fi
 }
 
-# Create directories
+# Migrate skill directories left behind by the pre-skills.sh curl-based
+# installer. Those were written as regular directories at ~/.claude/skills/<name>;
+# the skills CLI will then manage them in-place as Claude-Code-specific installs
+# instead of routing them through the universal ~/.agents/skills/ cache, which
+# is where Codex (and other "universal" agents) read from. Moving them aside
+# lets the CLI install each source into the universal path on this run, so the
+# Claude-side entries become symlinks and the same skills become visible to
+# Codex/OpenCode/etc.
+#
+# The files are moved, not deleted — everything ends up under
+# ~/.claude/skills.pre-skills-sh.<timestamp>/ and can be restored manually.
+migrate_legacy_skill_dirs() {
+  local skills_dir=~/.claude/skills
+  [[ -d "$skills_dir" ]] || return 0
+
+  local stale=()
+  local entry name
+  for entry in "$skills_dir"/*/; do
+    [[ -d "$entry" ]] || continue
+    name="$(basename "$entry")"
+    [[ -L "$skills_dir/$name" ]] && continue
+    stale+=("$name")
+  done
+
+  if [[ ${#stale[@]} -eq 0 ]]; then
+    return 0
+  fi
+
+  local backup
+  backup="$skills_dir.pre-skills-sh.$(date +%Y%m%d_%H%M%S)"
+  echo -e "${YELLOW}→${NC} Found ${#stale[@]} pre-skills.sh skill director$([[ ${#stale[@]} -eq 1 ]] && echo "y" || echo "ies") at ~/.claude/skills/"
+  echo -e "${YELLOW}→${NC} Moving to $backup so the skills CLI can route them through the universal path"
+  mkdir -p "$backup"
+  for name in "${stale[@]}"; do
+    mv "$skills_dir/$name" "$backup/"
+    echo -e "   • $name"
+  done
+  echo ""
+}
+
+# Install skills from a skills.sh source for the selected agents
+install_skills_from() {
+  local source="$1"
+  local label="$2"
+  local skill="${3:-*}"
+
+  echo -e "${YELLOW}→${NC} Installing $label from $source for: ${SKILL_AGENTS[*]}"
+
+  # Build -a flags from the SKILL_AGENTS array
+  local agent_args=()
+  for agent in "${SKILL_AGENTS[@]}"; do
+    agent_args+=(-a "$agent")
+  done
+
+  # -g: install globally (per-agent paths managed by the skills CLI)
+  # -s '*': install all skills from the source, or a named skill when provided
+  # -y: skip prompts
+  if npx --yes skills add "$source" -g "${agent_args[@]}" -s "$skill" -y; then
+    echo -e "${GREEN}✓${NC} $label installed"
+  else
+    echo -e "${RED}✗${NC} Failed to install $label from $source"
+    return 1
+  fi
+}
+
+# Verify skills landed in the universal cache — the path Codex and other
+# "universal agents" read from. Regular (non-symlink) directories under
+# ~/.claude/skills/ after install mean something routed through the
+# Claude-Code-specific path and won't be visible to non-Claude agents.
+verify_skills_installed() {
+  local skills_dir=~/.claude/skills
+  [[ -d "$skills_dir" ]] || return 0
+
+  local stale=() entry name
+  for entry in "$skills_dir"/*/; do
+    [[ -d "$entry" ]] || continue
+    name="$(basename "$entry")"
+    [[ -L "$skills_dir/$name" ]] && continue
+    stale+=("$name")
+  done
+
+  if [[ ${#stale[@]} -gt 0 ]]; then
+    echo -e "${YELLOW}⚠${NC}  ${#stale[@]} skill(s) ended up as regular directories under ~/.claude/skills/"
+    echo -e "    These won't be visible to non-Claude agents (Codex, etc.):"
+    for name in "${stale[@]}"; do
+      echo -e "      • $name"
+    done
+    echo -e "    Re-run ${YELLOW}$0 --skills-only${NC} to migrate them, or remove via ${YELLOW}npx skills remove -g -s <name>${NC}."
+  fi
+}
+
+# Create directories for non-skills artifacts
 echo -e "${BLUE}Creating directories...${NC}"
-mkdir -p ~/.claude/agents ~/.claude/skills ~/.claude/commands
-mkdir -p ~/.claude/skills/tdd ~/.claude/skills/typescript-strict ~/.claude/skills/functional
-mkdir -p ~/.claude/skills/refactoring ~/.claude/skills/testing ~/.claude/skills/expectations ~/.claude/skills/planning
-mkdir -p ~/.claude/skills/front-end-testing ~/.claude/skills/react-testing ~/.claude/skills/mutation-testing ~/.claude/skills/test-design-reviewer
-if [[ "$INSTALL_EXTERNAL" == true ]]; then
-  mkdir -p ~/.claude/skills/accessibility ~/.claude/skills/best-practices ~/.claude/skills/core-web-vitals
-  mkdir -p ~/.claude/skills/performance ~/.claude/skills/seo ~/.claude/skills/web-quality-audit
-fi
+mkdir -p ~/.claude/agents ~/.claude/commands
 echo -e "${GREEN}✓${NC} Directories created"
 echo ""
 
@@ -181,71 +363,43 @@ if [[ "$INSTALL_CLAUDE" == true ]]; then
   echo ""
 fi
 
-# Install skills (v3.0: auto-discovered patterns)
+# Install skills via skills.sh CLI (multi-agent)
 if [[ "$INSTALL_SKILLS" == true ]]; then
-  echo -e "${BLUE}Installing skills (auto-discovered patterns)...${NC}"
+  echo -e "${BLUE}Installing skills via skills.sh...${NC}"
+  echo -e "${YELLOW}→${NC} Target agents: ${SKILL_AGENTS[*]}"
+  echo -e "${YELLOW}→${NC} (Pass --agent <name> to target more — see skills.sh for the full list)"
+  echo ""
 
-  skills=(
-    "tdd/SKILL.md"
-    "typescript-strict/SKILL.md"
-    "functional/SKILL.md"
-    "refactoring/SKILL.md"
-    "testing/SKILL.md"
-    "mutation-testing/SKILL.md"
-    "test-design-reviewer/SKILL.md"
-    "expectations/SKILL.md"
-    "planning/SKILL.md"
-    "front-end-testing/SKILL.md"
-    "react-testing/SKILL.md"
-  )
+  migrate_legacy_skill_dirs
 
-  for skill in "${skills[@]}"; do
-    backup_file ~/.claude/skills/"$skill"
-    download_file \
-      "$BASE_URL/$VERSION/claude/.claude/skills/$skill" \
-      ~/.claude/skills/"$skill" \
-      "skills/$skill"
-  done
+  install_skills_from "$OWN_SKILLS_REPO" "own skills (citypaul/.dotfiles)"
+
+  if [[ "$INSTALL_EXTERNAL" == true ]]; then
+    install_skills_from "$WEB_QUALITY_SKILLS_REPO" "web quality skills (addyosmani/web-quality-skills)"
+    install_skills_from "$NEXT_SKILLS_REPO" "Next.js skills (vercel-labs/next-skills)"
+    install_skills_from "$MATTPOCOCK_SKILLS_REPO" "grill-me skill (mattpocock/skills)" "$GRILL_ME_SKILL"
+    install_skills_from "$MARKETING_SKILLS_REPO" "seo-audit skill (coreyhaines31/marketingskills)" "$SEO_AUDIT_SKILL"
+  fi
+
+  if [[ "$INSTALL_IMPECCABLE" == true ]]; then
+    install_skills_from "$IMPECCABLE_SKILLS_REPO" "impeccable design skills (pbakaus/impeccable)"
+  fi
+
+  echo ""
+  verify_skills_installed
   echo ""
 fi
 
-# Install external community skills (fetched from upstream repos)
-if [[ "$INSTALL_EXTERNAL" == true && "$INSTALL_SKILLS" == true ]]; then
-  echo -e "${BLUE}Installing external community skills...${NC}"
-  echo -e "${YELLOW}→${NC} Source: addyosmani/web-quality-skills (MIT License)"
-
-  external_skills=(
-    "accessibility/SKILL.md"
-    "best-practices/SKILL.md"
-    "core-web-vitals/SKILL.md"
-    "performance/SKILL.md"
-    "seo/SKILL.md"
-    "web-quality-audit/SKILL.md"
-  )
-
-  for skill in "${external_skills[@]}"; do
-    backup_file ~/.claude/skills/"$skill"
-    download_file \
-      "$WEB_QUALITY_SKILLS_URL/main/skills/$skill" \
-      ~/.claude/skills/"$skill" \
-      "skills/$skill (web-quality-skills)"
-  done
-
-  # Download the license file to preserve attribution as required by MIT
-  download_file \
-    "$WEB_QUALITY_SKILLS_URL/main/LICENSE" \
-    ~/.claude/skills/.web-quality-skills-LICENSE \
-    "web-quality-skills LICENSE"
-
-  echo ""
-fi
-
-# Install commands (v3.0: slash commands)
+# Install commands (slash commands)
 if [[ "$INSTALL_COMMANDS" == true ]]; then
   echo -e "${BLUE}Installing commands (slash commands)...${NC}"
 
   commands=(
+    "setup.md"
     "pr.md"
+    "plan.md"
+    "continue.md"
+    "generate-pr-review.md"
   )
 
   for cmd in "${commands[@]}"; do
@@ -272,6 +426,7 @@ if [[ "$INSTALL_AGENTS" == true ]]; then
     "pr-reviewer.md"
     "use-case-data-patterns.md"
     "progress-guardian.md"
+    "twelve-factor-audit.md"
     "README.md"
   )
 
@@ -294,6 +449,36 @@ if [[ "$INSTALL_OPENCODE" == true ]]; then
     "$BASE_URL/$VERSION/opencode/.config/opencode/opencode.json" \
     ~/.config/opencode/opencode.json \
     "opencode.json"
+
+  # Copy commands for OpenCode, stripping Claude Code-specific frontmatter
+  # OpenCode uses ~/.config/opencode/command/ (singular) for slash commands
+  # The 'allowed-tools' field is Claude Code-specific and not valid in OpenCode
+  if [[ -d ~/.claude/commands ]]; then
+    echo -e "${BLUE}Copying commands for OpenCode...${NC}"
+    mkdir -p ~/.config/opencode/command
+    for cmd in ~/.claude/commands/*.md; do
+      if [[ -f "$cmd" ]]; then
+        sed '/^allowed-tools:/d' "$cmd" > ~/.config/opencode/command/"$(basename "$cmd")"
+        echo -e "${GREEN}✓${NC} command/$(basename "$cmd")"
+      fi
+    done
+  fi
+
+  # Copy agents for OpenCode, stripping Claude Code-specific frontmatter
+  # OpenCode uses ~/.config/opencode/agent/ (singular) for agents
+  # The 'tools' field expects an object in OpenCode but is a string in Claude Code
+  # The 'color' field expects hex (#RRGGBB) in OpenCode but is a named color in Claude Code
+  if [[ -d ~/.claude/agents ]]; then
+    echo -e "${BLUE}Copying agents for OpenCode...${NC}"
+    mkdir -p ~/.config/opencode/agent
+    for agent in ~/.claude/agents/*.md; do
+      if [[ -f "$agent" ]]; then
+        sed '/^tools:/d; /^color:/d' "$agent" > ~/.config/opencode/agent/"$(basename "$agent")"
+        echo -e "${GREEN}✓${NC} agent/$(basename "$agent")"
+      fi
+    done
+  fi
+
   echo ""
 fi
 
@@ -312,33 +497,53 @@ if [[ "$INSTALL_CLAUDE" == true ]]; then
 fi
 
 if [[ "$INSTALL_SKILLS" == true ]]; then
-  echo -e "  ${GREEN}✓${NC} skills/ (11 auto-discovered patterns: tdd, testing, mutation-testing, test-design-reviewer, typescript-strict, functional, refactoring, expectations, planning, front-end-testing, react-testing)"
+  echo -e "  ${GREEN}✓${NC} skills (installed via skills.sh for: ${SKILL_AGENTS[*]})"
+  echo -e "     • citypaul/.dotfiles — auto-discovered patterns (tdd, testing, typescript-strict, ...)"
   if [[ "$INSTALL_EXTERNAL" == true ]]; then
-    echo -e "  ${GREEN}✓${NC} skills/ (6 web quality patterns: accessibility, best-practices, core-web-vitals, performance, seo, web-quality-audit)"
+    echo -e "     • addyosmani/web-quality-skills — accessibility, performance, SEO, ..."
+    echo -e "     • vercel-labs/next-skills — Next.js best practices, Cache Components, upgrades"
+    echo -e "     • mattpocock/skills/grill-me — relentless plan and design interviewing"
+    echo -e "     • coreyhaines31/marketingskills/seo-audit — SEO audit workflow"
   fi
+  if [[ "$INSTALL_IMPECCABLE" == true ]]; then
+    echo -e "     • pbakaus/impeccable — design vocabulary + steering commands"
+  fi
+  echo -e "     Run ${YELLOW}npx skills list -g${NC} to see paths for each agent."
 fi
 
 if [[ "$INSTALL_COMMANDS" == true ]]; then
-  echo -e "  ${GREEN}✓${NC} commands/ (1 slash command: /pr)"
+  echo -e "  ${GREEN}✓${NC} commands/ (5 slash commands: /setup, /pr, /plan, /continue, /generate-pr-review)"
 fi
 
 if [[ "$INSTALL_AGENTS" == true ]]; then
-  echo -e "  ${GREEN}✓${NC} agents/ (9 Claude Code agents + README)"
+  echo -e "  ${GREEN}✓${NC} agents/ (10 Claude Code agents + README)"
 fi
 
 if [[ "$INSTALL_OPENCODE" == true ]]; then
   echo -e ""
   echo -e "${BLUE}Installed to ~/.config/opencode/${NC}"
   echo -e "  ${GREEN}✓${NC} opencode.json (OpenCode rules configuration)"
+  echo -e "  ${GREEN}✓${NC} command/ (slash commands from ~/.claude/commands/)"
+  echo -e "  ${GREEN}✓${NC} agent/ (agents from ~/.claude/agents/)"
+  if [[ "$INSTALL_SKILLS" == true ]]; then
+    echo -e "  ${GREEN}✓${NC} skills also installed into OpenCode via skills.sh"
+  fi
 fi
 
 echo ""
-echo -e "${BLUE}Architecture (v3.0):${NC}"
+echo -e "${BLUE}Architecture:${NC}"
 echo ""
 echo -e "  ${YELLOW}CLAUDE.md${NC}  → Core principles (~100 lines, always loaded)"
-echo -e "  ${YELLOW}skills/${NC}    → Detailed patterns (loaded on-demand when relevant)"
+echo -e "  ${YELLOW}skills/${NC}    → Detailed patterns (loaded on-demand). Managed by ${YELLOW}npx skills${NC}"
 echo -e "  ${YELLOW}commands/${NC}  → Slash commands (manually invoked)"
 echo -e "  ${YELLOW}agents/${NC}    → Complex multi-step workflows"
+echo ""
+echo -e "${BLUE}Managing skills:${NC}"
+echo ""
+echo -e "  ${YELLOW}npx skills list -g${NC}              List installed skills"
+echo -e "  ${YELLOW}npx skills update -g${NC}            Update skills to latest"
+echo -e "  ${YELLOW}npx skills find <query>${NC}         Search skills.sh for more skills"
+echo -e "  ${YELLOW}npx skills remove -g <name>${NC}     Uninstall a skill"
 echo ""
 echo -e "${BLUE}Next steps:${NC}"
 echo ""
@@ -358,18 +563,60 @@ if [[ "$INSTALL_AGENTS" == true ]]; then
   echo ""
 fi
 
+if [[ "$INSTALL_SKILLS" == true ]]; then
+  echo -e "${BLUE}Want to target more agents?${NC}"
+  echo ""
+  echo -e "  Skills via skills.sh work with 40+ agents (Codex, Cursor, Copilot, Gemini CLI, ...)."
+  echo -e "  Re-run with ${YELLOW}--agent <name>${NC} (repeatable) to add more:"
+  echo -e "     ${YELLOW}$0 --skills-only --agent codex --agent cursor${NC}"
+  echo ""
+fi
+
+if [[ "$INSTALL_IMPECCABLE" == true && "$INSTALL_SKILLS" == true ]]; then
+  echo -e "${BLUE}╔════════════════════════════════════════════════════╗${NC}"
+  echo -e "${BLUE}║  Impeccable Design Skills - Quick Start Guide      ║${NC}"
+  echo -e "${BLUE}╚════════════════════════════════════════════════════╝${NC}"
+  echo ""
+  echo -e "  Impeccable is a frontend design vocabulary that guides AI coding"
+  echo -e "  tools toward distinctive, high-quality interfaces."
+  echo ""
+  echo -e "  ${YELLOW}Getting started:${NC}"
+  echo -e "    ${GREEN}/impeccable teach${NC}   Set up design context for your project"
+  echo -e "    ${GREEN}/impeccable craft${NC}   Shape, build, and iterate on a feature"
+  echo -e "    ${GREEN}/impeccable extract${NC} Pull reusable components and tokens"
+  echo ""
+  echo -e "  ${YELLOW}Steering commands:${NC}"
+  echo -e "    /shape /critique /audit /polish /typeset /colorize /animate"
+  echo -e "    /layout /harden /clarify /adapt /bolder /quieter /distill"
+  echo -e "    /delight /optimize /overdrive"
+  echo ""
+  echo -e "  ${BLUE}Full documentation: https://impeccable.style/skills/${NC}"
+  echo ""
+fi
+
 echo -e "${BLUE}Acknowledgments:${NC}"
 echo ""
-echo -e "  This project includes contributions and adapted work from:"
+echo -e "  Skills ecosystem: ${YELLOW}skills.sh${NC} (${BLUE}https://skills.sh${NC})"
 echo ""
-echo -e "  • ${YELLOW}Addy Osmani${NC} - Web quality skills (accessibility, performance, SEO,"
-echo -e "    core-web-vitals, best-practices, web-quality-audit)"
-echo -e "    ${BLUE}https://github.com/addyosmani/web-quality-skills${NC} (MIT License)"
+echo -e "  • ${YELLOW}Addy Osmani${NC} — web quality skills"
+echo -e "    ${BLUE}https://github.com/addyosmani/web-quality-skills${NC} (MIT)"
 echo ""
-echo -e "  • ${YELLOW}Kieran O'Hara${NC} - use-case-data-patterns agent"
+echo -e "  • ${YELLOW}Vercel Labs${NC} — Next.js skills"
+echo -e "    ${BLUE}https://skills.sh/vercel-labs/next-skills${NC}"
+echo ""
+echo -e "  • ${YELLOW}Paul Bakaus${NC} — impeccable frontend design skills"
+echo -e "    ${BLUE}https://impeccable.style/skills/${NC} (Apache 2.0)"
+echo ""
+echo -e "  • ${YELLOW}Matt Pocock${NC} — grill-me planning interview skill"
+echo -e "    ${BLUE}https://skills.sh/mattpocock/skills/grill-me${NC}"
+echo ""
+echo -e "  • ${YELLOW}Corey Haines${NC} — seo-audit marketing skill"
+echo -e "    ${BLUE}https://skills.sh/coreyhaines31/marketingskills/seo-audit${NC} (MIT)"
+echo ""
+echo -e "  • ${YELLOW}Kieran O'Hara${NC} — use-case-data-patterns agent"
 echo -e "    ${BLUE}https://github.com/kieran-ohara/dotfiles${NC}"
 echo ""
-echo -e "  • ${YELLOW}Andrea Laforgia${NC} - test-design-reviewer skill"
+echo -e "  • ${YELLOW}Andrea Laforgia${NC} — test-design-reviewer skill"
 echo -e "    ${BLUE}https://github.com/andlaf-ak/claude-code-agents${NC}"
 echo ""
 echo -e "${BLUE}For help or issues:${NC}"

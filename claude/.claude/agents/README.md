@@ -17,7 +17,7 @@ This directory contains specifications for specialized Claude Code agents that w
 - Code has been written (verify TDD was followed)
 - Tests are green (assess refactoring opportunities)
 
-**Core responsibility**: Enforce RED-GREEN-REFACTOR cycle, verify tests written first.
+**Core responsibility**: Enforce RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR cycle, verify tests written first.
 
 ---
 
@@ -38,10 +38,10 @@ This directory contains specifications for specialized Claude Code agents that w
 ---
 
 #### `refactor-scan`
-**Purpose**: Assesses refactoring opportunities after tests pass (TDD's third step).
+**Purpose**: Assesses refactoring opportunities after mutation testing validates test strength (TDD's final step).
 
 **Use proactively when**:
-- Tests just turned green
+- Mutation testing is complete and surviving mutants addressed
 - Considering creating abstractions
 - Planning code improvements
 
@@ -145,7 +145,23 @@ This directory contains specifications for specialized Claude Code agents that w
 
 ---
 
-### Analysis & Architecture Agents
+### Compliance & Architecture Agents
+
+#### `twelve-factor-audit`
+**Purpose**: Audits Node.js/TypeScript codebases for 12-Factor App compliance.
+
+**Use when**:
+- Onboarding to an existing service project
+- Assessing deployment readiness
+- Reviewing infrastructure patterns before scaling
+
+**Core responsibility**: Produce a compliance report covering all 12 factors with specific file/line citations, gaps, and prioritized actionable suggestions.
+
+**Output:** Compliance report with factor summary table, violation details, code suggestions, and prioritized action plan written to `twelve-factor-audit.md`.
+
+**Related skill**: Load `twelve-factor` skill for detailed 12-factor patterns.
+
+---
 
 #### `use-case-data-patterns`
 **Purpose**: Analyzes how user-facing use cases map to underlying data access patterns and architectural implementation.
@@ -169,7 +185,7 @@ This directory contains specifications for specialized Claude Code agents that w
 ### Workflow & Planning Agents
 
 #### `progress-guardian`
-**Purpose**: Manages progress through significant work using a three-document system.
+**Purpose**: Tracks progress through significant work using plan files in `plans/`.
 
 **Use proactively when**:
 - Starting significant multi-step work
@@ -177,28 +193,17 @@ This directory contains specifications for specialized Claude Code agents that w
 - Starting complex refactoring or investigation
 
 **Use reactively when**:
-- Completing a step (update WIP.md)
-- Discovering something (add to LEARNINGS.md)
+- Completing a step (update plan progress)
 - Plan needs changing (propose changes, get approval)
-- End of work session (checkpoint)
-- Feature complete (merge learnings, delete docs)
+- Feature complete (merge learnings, delete plan file)
 
 **Core responsibility**:
-- Create and maintain three documents: **PLAN.md**, **WIP.md**, **LEARNINGS.md**
+- Track progress through plan files in `plans/` directory
 - Enforce small increments, TDD, commit approval
-- Never modify PLAN.md without explicit user approval
-- Capture learnings as they occur
-- At end: orchestrate learning merge, then **DELETE all three docs**
+- Never modify plans without explicit user approval
+- At end: orchestrate learning merge, then **DELETE plan file**
 
-**Three-Document Model**:
-
-| Document | Purpose | Updates |
-|----------|---------|---------|
-| **PLAN.md** | What we're doing (approved steps) | Only with user approval |
-| **WIP.md** | Where we are now (current state) | Constantly |
-| **LEARNINGS.md** | What we discovered | As discoveries occur |
-
-**Key distinction**: Creates TEMPORARY docs (deleted when done). Learnings merged into CLAUDE.md/ADRs before deletion.
+**Key distinction**: Plan files are TEMPORARY (deleted when done). Learnings merged into CLAUDE.md/ADRs before deletion.
 
 **Related skill**: Load `planning` skill for detailed incremental work principles.
 
@@ -211,12 +216,12 @@ This directory contains specifications for specialized Claude Code agents that w
 ```
 progress-guardian (orchestrates)
     │
-    ├─► Creates: PLAN.md, WIP.md, LEARNINGS.md
+    ├─► Creates: plans/<name>.md
     │
     ├─► For each step:
-    │   ├─→ tdd-guardian (RED-GREEN-REFACTOR)
+    │   ├─→ tdd-guardian (RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR)
     │   ├─→ ts-enforcer (before commits)
-    │   └─→ refactor-scan (after GREEN)
+    │   └─→ refactor-scan (after MUTATE + KILL MUTANTS)
     │
     ├─► When decisions arise:
     │   └─→ adr (architectural decisions)
@@ -225,56 +230,81 @@ progress-guardian (orchestrates)
     │   └─→ pr-reviewer (comprehensive PR review)
     │
     ├─► At end:
-    │   ├─→ learn (merge LEARNINGS.md → CLAUDE.md)
+    │   ├─→ learn (merge learnings → CLAUDE.md)
     │   ├─→ docs-guardian (update permanent docs)
-    │   └─→ DELETE all three docs
+    │   └─→ DELETE plan file from plans/
     │
     └─► Related: `planning` skill (incremental work principles)
 ```
 
 ### Typical Workflow
 
-1. **Start significant work**
-   - Load `planning` skill for principles
-   - Invoke `progress-guardian`: Creates PLAN.md, WIP.md, LEARNINGS.md
-   - Get approval for PLAN.md
+**Recommended command flow:** `/setup` → `/plan` → RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR → `/pr` → `/continue` → repeat
 
-2. **For each step in plan**
-   - RED: Write failing test (TDD non-negotiable)
+1. **Onboard project** (once)
+   - Run `/setup` to detect tech stack and generate project-level config
+   - Run `/generate-pr-review` if custom PR review rules needed
+
+2. **Plan the work** (before writing any code)
+   - Run `/plan` to create a plan in `plans/` on a branch with a PR
+   - Get approval for the plan before writing any code
+
+3. **For each step in plan**
+   - LOAD: `tdd`, `testing`, `mutation-testing`, and `refactoring` before code changes
+   - RED: Write failing behavior test (TDD non-negotiable)
    - GREEN: Minimal code to pass
-   - REFACTOR: Invoke `refactor-scan` to assess improvements
-   - Update WIP.md with progress
-   - Capture discoveries in LEARNINGS.md
+   - MUTATE: Run `mutation-testing` skill and produce a report
+   - KILL MUTANTS: Address surviving mutants or justify equivalent mutants
+   - REFACTOR: Run `refactoring` skill and invoke `refactor-scan` to assess improvements
    - **WAIT FOR COMMIT APPROVAL**
 
-3. **When plan needs changing**
-   - Invoke `progress-guardian`: Propose changes
-   - **Get approval before modifying PLAN.md**
+4. **When plan needs changing**
+   - Propose changes, **get approval before modifying plan**
 
-4. **When architectural decision arises**
-   - Add to LEARNINGS.md immediately
+5. **When architectural decision arises**
    - Invoke `adr` if decision warrants permanent record
 
-5. **Before commits**
+6. **Before commits**
    - Invoke `ts-enforcer`: Verify TypeScript compliance
    - Invoke `tdd-guardian`: Verify TDD compliance
    - **Ask for commit approval**
 
-6. **End of session**
-   - Invoke `progress-guardian`: Update WIP.md, session checkpoint
-
-7. **Before creating PR**
+7. **Pre-PR quality gate**
+   - Verify `tdd`, `testing`, `mutation-testing`, and `refactoring` were loaded for implemented slices
+   - Run `mutation-testing` skill: Verify tests detect changes, kill surviving mutants
+   - Run `refactoring` skill and invoke `refactor-scan`: Assess improvements (only if adds value)
    - Invoke `pr-reviewer`: Self-review changes
    - Fix any issues found
-   - Create PR using `/pr` command
+   - Run `/pr` to create PR with quality gates (TDD evidence + mutation testing + refactoring assessment + typecheck + lint; project-generated `/pr` commands also run tests and build)
 
-8. **Feature complete**
-   - Invoke `progress-guardian`: Verify all criteria met
-   - Review LEARNINGS.md for merge destinations
+8. **Continue to next step**
+   - After PR is merged, run `/continue` to pull main, create new branch, update plan
+
+9. **Feature complete**
+   - Verify all acceptance criteria met
    - Invoke `learn`: Merge gotchas/patterns → CLAUDE.md
    - Invoke `adr`: Create ADRs for architectural decisions
    - Invoke `docs-guardian`: Update permanent docs
-   - **DELETE PLAN.md, WIP.md, LEARNINGS.md**
+   - **DELETE plan file from `plans/`** (delete `plans/` if empty)
+
+## When to Use Which Agent
+
+Quick decision table for all agents:
+
+| Question | Agent | Timing |
+|----------|-------|--------|
+| "How do I work with X?" | `learn` | After discovering patterns/gotchas |
+| "Why did we choose X?" | `adr` | When making/documenting architecture decisions |
+| "Is this type-safe?" | `ts-enforcer` | During development (proactive) |
+| "Is this PR ready?" | `pr-reviewer` | At review time (reactive) |
+| "Should I refactor this?" | `refactor-scan` | After MUTATE + KILL MUTANTS |
+| "Was TDD followed?" | `tdd-guardian` | During TDD cycle |
+| "Is this documented?" | `docs-guardian` | At feature completion |
+| "What data patterns exist?" | `use-case-data-patterns` | Before implementing features |
+| "Is this 12-factor compliant?" | `twelve-factor-audit` | When onboarding or assessing deployment readiness |
+| "Where am I in this work?" | `progress-guardian` | Throughout multi-step work |
+
+**Note:** `learn` and `adr` can both apply to the same decision — `learn` captures "how to use it" (→ CLAUDE.md), `adr` captures "why we chose it" (→ ADR doc).
 
 ## Key Distinctions
 
@@ -284,10 +314,10 @@ progress-guardian (orchestrates)
 |--------|------------------|-----|-------|---------------|
 | **Lifespan** | Temporary (days/weeks) | Permanent | Permanent | Permanent |
 | **Audience** | Current developer | Future developers | AI assistant + developers | Users + developers |
-| **Purpose** | Track progress, capture learnings | Explain "why" decisions | Explain "how" to work | Explain "what" and "how to use" |
-| **Content** | PLAN + WIP + LEARNINGS | Context, decision, consequences | Gotchas, patterns | Features, API, setup |
-| **Updates** | Constantly (WIP), on approval (PLAN) | Once (rarely updated) | As learning occurs | When features change |
-| **Format** | Informal notes | Structured ADR format | Informal examples | Professional, polished |
+| **Purpose** | Track progress through plan | Explain "why" decisions | Explain "how" to work | Explain "what" and "how to use" |
+| **Content** | Plan file in `plans/` | Context, decision, consequences | Gotchas, patterns | Features, API, setup |
+| **Updates** | On approval (plan changes) | Once (rarely updated) | As learning occurs | When features change |
+| **Format** | Structured plan | Structured ADR format | Informal examples | Professional, polished |
 | **End of life** | **DELETED** when done | Lives forever | Lives forever | Lives forever |
 
 ### When to Use Which Documentation Agent
@@ -296,8 +326,7 @@ progress-guardian (orchestrates)
 - "What am I working on right now?"
 - "What's the next step?"
 - "Where was I when I stopped yesterday?"
-- "What have we discovered so far?"
-- → Answer: Temporary PLAN.md, WIP.md, LEARNINGS.md (deleted when done)
+- → Answer: Temporary plan file in `plans/` (deleted when done)
 
 **Use `adr`** for:
 - "Why did we choose technology X over Y?"
@@ -322,6 +351,18 @@ progress-guardian (orchestrates)
 - "What data patterns support this use case?"
 - "What's missing to implement this feature?"
 - → Answer: Analytical report mapping use cases to data patterns
+
+## Slash Commands
+
+Commands complement agents by encoding common workflows into single invocations.
+
+| Command | Purpose | When to Use |
+|---------|---------|-------------|
+| `/setup` | Project onboarding — detect tech stack, create CLAUDE.md, hooks, commands, PR reviewer | Starting work on a new project (replaces `/init`) |
+| `/pr` | Create a pull request following standards | When ready to submit work |
+| `/plan` | Create a plan document on a branch with a PR — no code | When planning work before implementation |
+| `/continue` | Pull merged PR, create new branch, update plan | After a PR is merged and you want to continue |
+| `/generate-pr-review` | Generate project-specific PR review automation | One-time setup per project |
 
 ## Using These Agents
 
@@ -364,16 +405,17 @@ When creating a new agent specification:
 These agents work together to create a comprehensive development workflow:
 
 - **Analysis**: use-case-data-patterns maps use cases to implementation patterns
+- **Compliance**: twelve-factor-audit assesses 12-factor methodology adherence
 - **Quality**: tdd-guardian + ts-enforcer ensure code quality
-- **Improvement**: refactor-scan optimizes code after tests pass
+- **Improvement**: refactor-scan optimizes code after mutation testing validates test strength
 - **Review**: pr-reviewer validates PRs before merge
 - **Knowledge**: learn + adr + docs-guardian preserve knowledge
-- **Progress**: progress-guardian manages incremental work with three-document model
+- **Progress**: progress-guardian tracks work through plan files in `plans/`
 
 **Key workflow principles** (see `planning` skill for details):
 - All work in small, known-good increments
-- TDD non-negotiable (RED-GREEN-REFACTOR)
+- TDD non-negotiable (RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR)
 - Commit approval required before every commit
-- Learnings captured as they occur, merged at end
+- Learnings captured at end via `learn` and `adr` agents
 
 Each agent is specialized, autonomous, and designed to be invoked at the right time to maintain high standards throughout the development process.

@@ -1,5 +1,813 @@
 # Changelog
 
+## 3.35.0
+
+### Minor Changes
+
+- 87827c4: Comprehensive quality pass across all Claude config: skills, agents, commands, settings
+
+  **Correctness fixes**
+
+  - folder-structure: lint examples now block bare `react`/`next`/`react-dom` imports (minimatch `react/**` only matches subpaths, so the rule as written missed the most common violation)
+  - front-end-testing/react-testing: MSW guidance now covers `setupWorker` from `msw/browser` for Browser Mode (previously only `setupServer` from `msw/node` was shown, which does not work in a real browser); `act()` guidance scoped correctly for `renderHook`
+  - functional: fixed example that returned `boolean | undefined` under strict mode
+  - typescript-strict: branded-type example now uses a validating constructor instead of bare `as` assertions (which violated the skill's own rule); added schemas-at-trust-boundaries and Standard Schema guidance
+  - expectations: removed "then commit" guidance that contradicted the wait-for-commit-approval rule; added MUTATE/KILL MUTANTS to the cycle
+  - tdd: added commit-approval STOP to the workflow; added triangulation guidance to GREEN
+  - mutation-testing: removed non-existent Stryker `testFiles` option, named `@stryker-mutator/vitest-runner` as required, added Browser Mode caveat
+  - testing: `jest.spyOn` → `vi.spyOn`; documented the callback-prop exception to the spy anti-pattern
+  - api-design: rate limiting updated to current IETF draft fields (`RateLimit`/`RateLimit-Policy`)
+  - generate-pr-review: removed Go-style string concatenation artifacts that would corrupt generated `/pr` commands
+  - agents: added missing `Write` tool to progress-guardian, twelve-factor-audit, docs-guardian (their jobs require creating files); pr-reviewer greps now cover Vitest
+
+  **Progressive disclosure restructures** (lean SKILL.md + on-demand resources)
+
+  - front-end-testing: 1061 → 360 lines + 3 new resources (async-patterns, msw, dom-testing-library-legacy); universal query-priority/philosophy content un-mislabeled from "Legacy"
+  - react-testing: 590 → 319 lines + testing-library-react-legacy resource; forms/error-boundaries/portals/Suspense ported to Browser Mode dialect; RSC note added
+  - functional: 732 → 273 lines + immutability-catalog and composition-patterns resources
+  - twelve-factor: 413 → 237 lines + node-patterns resource
+  - api-design: RFC 9457 deep detail extracted to problem-details resource
+  - cli-design: intra-file duplicate tables removed; composability examples extracted
+
+  **Deduplication and consistency**
+
+  - domain-driven-design: branded types and illegal-states sections now defer to typescript-strict, keeping only DDD-specific guidance; testing-priority table deduplicated with hexagonal-architecture; use-case placement reconciled with folder-structure across both architecture skills; broken `../REFERENCES.md` link fixed for standalone installs
+  - CLAUDE.md: added missing folder-structure and production-parity-skill-builder routing (previously undiscoverable); seo-audit added to external skills list
+  - Sharper trigger descriptions for tdd, refactoring, mutation-testing, ci-debugging, expectations, find-gaps; mutually exclusive scopes for the four review agents (tdd-guardian/ts-enforcer/refactor-scan/pr-reviewer)
+  - ci-debugging: added "Getting the data" (gh run commands) and TDD handoff sections
+  - expectations: rewritten around a learning-destination matrix (CLAUDE.md vs ADR vs plans vs memory) with routing to learn/adr agents
+  - commands: /pr gets main-branch guard + package-manager permissions for its quality gate; /continue gets dirty-worktree and merge-state checks; /plan and /pr get argument hints
+  - settings.json: hook uses `npx --no-install` (no silent registry installs), runs eslint even when prettier fails, 30s timeout, NotebookEdit matcher
+  - README: stale counts corrected (27 skills, ~160-line CLAUDE.md, 5 api-design resources)
+
+## 3.34.0
+
+### Minor Changes
+
+- b1aec2e: Strengthen DDD aggregate design guidance with invariant-first approach. Add 'Relationship-Driven Aggregates' anti-pattern, 'Design From Invariants, Not Relationships' section with litmus test and code examples, 'Aggregates Serve Commands, Not Queries' section connecting CQRS thinking to aggregate boundary decisions, 'Enforcing Boundaries in TypeScript' section with three concrete patterns (accept child IDs not objects, create children through the root, expose ReadonlyArray), lifecycle identity as a boundary discovery heuristic, and data locality / cross-aggregate eventual consistency principles. Add two checklist items for invariant-justified boundaries and no query-only properties in aggregates.
+
+## 3.33.0
+
+### Minor Changes
+
+- 2335c7f: Add a `folder-structure` skill for designing screaming, feature-based project structures with source-backed guidance for vertical slices, colocation, protected DDD/hex domain cores, linted import boundaries, shared boundaries, and monorepo organization. Cross-reference it from the DDD and hexagonal architecture skills, while making clear those physical layout and lint rules apply only after `folder-structure` has been adopted.
+
+## 3.32.0
+
+### Minor Changes
+
+- aaec53b: Add the Vercel Labs Next.js skills bundle to the default external skills installed via skills.sh.
+
+  The installer now includes `vercel-labs/next-skills`, which currently provides `next-best-practices`, `next-cache-components`, and `next-upgrade`.
+
+## 3.31.0
+
+### Minor Changes
+
+- c624a29: Enable OpenCode's built-in LSP support, including TypeScript, and include the OpenCode package in the stow installer.
+
+## 3.30.1
+
+### Patch Changes
+
+- fad45fd: Clarify that story-splitting hands implementation to planning, and that every planned implementation slice must load and apply the full `tdd`, `testing`, `mutation-testing`, and `refactoring` cycle before moving to the next slice.
+- 2dcc9f1: Clarify the requirements-to-code skill pipeline so consumers know when to use `grill-me`, `story-splitting`, `find-gaps`, `planning`, and the TDD execution skills. Also enforce loading the full `tdd`, `testing`, `mutation-testing`, and `refactoring` skill cycle before implementing planned slices.
+
+## 3.30.0
+
+### Minor Changes
+
+- 33cc791: Add a `story-splitting` skill for breaking large stories, epics, features, and backlog items into small end-to-end user-value slices.
+
+  The skill synthesizes Tim Ottinger's story-splitting resource list and linked articles, with on-demand resources for the detailed pattern catalog and source notes.
+
+## 3.29.1
+
+### Patch Changes
+
+- 2c32802: Clarify that generated production parity skills must be stored directly inside the target project repository, never in user or global skill folders.
+
+## 3.29.0
+
+### Minor Changes
+
+- 8c06947: Add production-parity-skill-builder skill for creating app-specific skills that detect and fix drift between production and non-production environments. Idea credited to GitHub user @dm.
+
+## 3.28.3
+
+### Patch Changes
+
+- c5e188e: Clarify that a vertical slice maps to a PR, not a single commit
+
+  The planning skill previously equated slice = commit, which contradicted the
+  reality that TDD increments within a slice naturally produce multiple commits.
+  Updated to clarify that a slice is the smallest independently mergeable PR,
+  and that multiple TDD commits within a slice are expected.
+
+## 3.28.2
+
+### Patch Changes
+
+- f0aaed5: Improve the planning skill to default to vertical slices.
+
+  The planning guidance now asks agents to plan thin end-to-end behaviours through
+  the real production path, while keeping existing TDD, mutation testing, and
+  commit-approval quality gates intact.
+
+## 3.28.1
+
+### Patch Changes
+
+- 7624f8e: Fix the Claude installer on macOS Bash by avoiding the Bash 4-only `mapfile` builtin when de-duplicating skill agent targets.
+
+## 3.28.0
+
+### Minor Changes
+
+- 7f35175: Add seo-audit as an external community skill from coreyhaines31/marketingskills
+
+  The installer now adds the seo-audit skill from coreyhaines31/marketingskills via skills.sh. Documentation now lists the marketing skill alongside the existing external skills and attributes the upstream source and MIT license.
+
+- 9a774de: Improve mutation testing guidance with a Stryker-first workflow, an on-demand mutator-rules resource, full-project and diff-against-main commands, survivor triage, and mutation-aware TDD/testing guidance on when to fix issues directly versus asking for human judgment.
+
+## 3.27.0
+
+### Minor Changes
+
+- 4d08be3: Add Matt Pocock's `grill-me` skill to the default skills installer.
+
+  The installer now adds `grill-me` from `mattpocock/skills` alongside the existing external skill sources, and the docs explain when to use it for plan and design interrogation.
+
+## 3.26.0
+
+### Minor Changes
+
+- 618aab7: feat(install): install skills via the skills.sh CLI
+
+  Replace the three direct-`curl` skill install blocks (own, web-quality-skills, impeccable) in `install-claude.sh` with `npx skills add -g -a claude-code -s '*' -y` calls against [skills.sh](https://skills.sh). The installer shrinks from ~700 to ~370 lines and skills can now be managed with `npx skills list/update/find/remove` after install instead of re-running the installer.
+
+  **Why it matters:**
+
+  - **Multi-agent portability** — the same skills are now installable against [40+ coding agents](https://github.com/vercel-labs/skills) (Claude Code, Cursor, Codex, Copilot, OpenCode, Gemini CLI, Cline, Continue, Windsurf, …) via the `-a <agent>` flag. `--with-opencode` is now just an extra `-a opencode` on the existing install rather than a duplicated tree.
+  - **New `--agent <name>` flag** — repeatable, lets you target any supported agent without knowing the `npx skills add` syntax (e.g. `--agent codex --agent cursor`). Paired with `--no-claude-code` to target only non-Claude agents. Default remains claude-code.
+  - **Lifecycle management** — `npx skills update -g` propagates upstream changes instead of requiring a full reinstall, and `npx skills find <query>` surfaces skills beyond this repo from the open ecosystem.
+  - **Installer no longer grows with the skill list** — three `curl` loops with hard-coded file lists (including every `resources/*.md` and `references/*.md`) collapsed into three `npx skills add` calls; adding a new skill to `claude/.claude/skills/` no longer requires a matching installer edit.
+
+  **Migration from the old curl-based installer is automatic.** The installer detects any pre-existing non-symlink directories under `~/.claude/skills/` (left behind by the curl-based installer), moves them aside to `~/.claude/skills.pre-skills-sh.<timestamp>/`, then lets the skills CLI install each source through the universal `~/.agents/skills/` cache. Without this step, the skills CLI would keep the stale directories in place as Claude-Code-specific installs and **they'd stay invisible to non-Claude agents** (Codex, OpenCode, etc.), defeating the multi-agent point. After install, a verification pass warns if anything ended up as a regular directory.
+
+  **Trade-offs (documented in the README):**
+
+  - `--skills-only` now requires Node.js for `npx`. The script preflights and errors clearly if Node is missing; `--claude-only` and `--agents-only` still work without it.
+  - The skills CLI doesn't surface ref pinning yet, so skills always install from the latest upstream commit. `--version` still pins `CLAUDE.md`, commands, and agents.
+
+  `CLAUDE.md`, slash commands, and agents continue to download directly from this repo — they aren't skills and aren't part of the skills.sh ecosystem.
+
+## 3.25.1
+
+### Patch Changes
+
+- 4bf77b1: fix(find-gaps): use `AskUserQuestion` for enumerable decisions
+
+  Weave the `AskUserQuestion` tool into the find-gaps loop wherever the **choice space is the value** (failure strategies, severity re-triage, state-variance scoping, parking decisions, write-back confirmation, variant comparison via `preview`) — while keeping free text for questions where the **user's specific words are the value** (microcopy, domain vocabulary, novel decisions).
+
+  **Why it matters:** structured options surface trade-offs the user might not have thought through (_"silent retry once"_ is rarely what they say first, but often the right call), speed up picking vs. generating, and let you batch 2–4 tightly-related sub-questions in one turn without reverting to a gap dump.
+
+  **What's added:**
+
+  - New **Asking with Structure** section with the core heuristic, good-fit table, bad-fit list, structural rules, and a worked payment-decline example showing how to batch two related sub-questions in one `AskUserQuestion` call
+  - Step 4 of the gap-closing loop now routes enumerable questions to `AskUserQuestion` and uses it for the _write as-is / edit inline / discard_ close, with optional `preview` for comparing two G/W/T drafts side-by-side
+  - "One question per turn" rule clarified: a structured call with 2–4 tightly-related sub-questions is still one turn; batching _unrelated_ gaps is a gap dump wearing a hat
+
+  **What's forbidden:**
+
+  - Inventing options just to use the tool (fabricated options anchor the user to guesses and hide their real answer)
+  - Using `AskUserQuestion` for microcopy (destroys the exact wording that is the point)
+  - Batching unrelated gaps into one call
+
+  No other docs change — this is an internal refinement of how the skill interacts with the user. README/CLAUDE.md entries are unchanged.
+
+## 3.25.0
+
+### Minor Changes
+
+- dc9d98e: feat: add find-gaps skill for collaborative pre-implementation review
+
+  Add a new `find-gaps` skill that systematically surfaces missing states, unhandled edge cases, unstated assumptions, and unverifiable criteria in plans, acceptance criteria, and design mocks — then **works interactively with the user** to close each gap, turning answers into new acceptance criteria, plan updates, or mock-state specs written back to the source of truth.
+
+  **Two core principles:**
+
+  1. _What isn't on the page is more dangerous than what is._ Treat silence as a red flag, not a green light.
+  2. _Every gap is a conversation, not a comment._ A gap list nobody answers is a todo list with extra steps. The output of this skill is a **tightened artifact**, not a gap report.
+
+  **The shape is a conversational loop:**
+
+  - Survey the artifact against an artifact-specific checklist (plans / AC / mocks)
+  - Triage candidates into Blocker / Should-address / Nice-to-have
+  - Tell the user how many gaps and where — get agreement to proceed
+  - Walk them one at a time (or a tightly-coupled pair), starting with Blockers
+  - For each: ask the concrete question, refine vague answers until testable, convert to an artifact update, show it back, confirm, write to source of truth
+  - Recap every 3–5 closed gaps to catch contradictions
+  - Exit when Blockers + Should-addresses are closed, or park explicitly with owner if the user calls time
+
+  **Answer-to-artifact conversion patterns** (with worked examples in the skill):
+
+  - **AC:** Given / When / Then with a single observable outcome, actor, and any emitted events. A QA engineer should be able to execute it without follow-up questions.
+  - **Plan update:** the sentence or subsection that would have been in the plan if the author had thought of it — section, trade-off, failure mode named.
+  - **Mock state spec:** name / trigger / visual / behaviour / exit for each missed state, so it can be implemented without re-asking.
+
+  **Working-with-the-user patterns** the skill enforces:
+
+  - One question per turn (no bundling)
+  - Mirror the user's vocabulary verbatim — no silent "buyer → user" promotions
+  - Every confirmed answer is visible in the artifact before moving on
+  - Surface downstream trade-offs explicitly
+  - Escalate gaps the user can't decide — name the actual owner, park with question
+  - Don't re-ask triage — you already decided severity
+
+  **Per-artifact discovery checklists** (the engine for surfacing candidates):
+
+  - Plans: scope boundary, prerequisites, sequencing, failure & recovery, state & data, observability, security, testing, tribal knowledge
+  - Acceptance criteria: measurability (vague-word hit list), G/W/T discipline, negative paths, input edge cases, time & locale, actors, non-functional targets, completion
+  - Design mocks: UI states (loading/empty/error/offline/rate-limited), content variance, interaction states, responsive, accessibility, theme, permissions, i18n
+
+  **Outputs:**
+
+  - Primary: the **updated artifact** written to the source of truth (AC list, plan doc, `states.md`)
+  - Secondary: a resolution log with closed gaps (→ location) and parked gaps (→ owner)
+
+  Registered in CLAUDE.md (skills list + pointer), README.md (skill count 23→24, Key Sections row, two Quick Navigation by Problem rows), and `install-claude.sh` (mkdir + skills-array entry).
+
+## 3.24.0
+
+### Minor Changes
+
+- 640ee0a: feat: add find-skills skill for discovering agent skills from the open ecosystem
+
+  Add the `find-skills` skill sourced from [vercel-labs/skills](https://github.com/vercel-labs/skills/tree/main/skills/find-skills). Helps Claude discover and install skills from the open agent skills ecosystem (`npx skills`, [skills.sh](https://skills.sh/)) when the user asks "how do I do X", "find a skill for X", or expresses interest in extending capabilities.
+
+  **What it does:**
+
+  - Activates when users ask how to accomplish something that might exist as an installable skill
+  - Checks the [skills.sh leaderboard](https://skills.sh/) first for well-known skills
+  - Runs `npx skills find [query]` with domain-appropriate keywords
+  - Verifies quality before recommending (install count ≥ 1K, trusted sources, GitHub stars)
+  - Presents options with install commands and links; offers to install with `npx skills add <owner/repo@skill> -g -y`
+  - Falls back to direct help or suggesting `npx skills init` when no skill matches
+
+  **Licensing:** Vendored under MIT. The upstream repository declares MIT in its `package.json` and README but does not ship a root `LICENSE` file, so a reproduced MIT notice is included at `claude/.claude/skills/find-skills/LICENSE` to preserve attribution. The install script downloads both `SKILL.md` and `LICENSE`.
+
+### Patch Changes
+
+- 640ee0a: fix: install-claude.sh now covers storyboard, teach-me, and diagrams skills
+
+  Three skills that had been committed to the repo were never added to the installer's skill list, so they were silently missing from `~/.claude/skills/` for anyone running `install-claude.sh`:
+
+  - `storyboard` (added in #128) — multi-surface design audit
+  - `teach-me` (added in #126) — evidence-based private tutor, plus 4 resource files
+  - `diagrams` (added in #122) — Mermaid/Graphviz/Vega-Lite/etc., plus `LICENSE`, `examples.md`, and 8 reference files
+
+  The installer now creates the missing directories, downloads all three SKILL.md files, and pulls in each skill's resources/references and any vendored LICENSE file.
+
+  Also updates `README.md` to reflect the actual catalog:
+
+  - Skill count bumped 21 → 23 (summary line and detailed install breakdown)
+  - **Key Sections** and **Quick Navigation by Problem** tables both now have rows for teach-me and diagrams, with MIT attribution visible inline for diagrams
+
+## 3.23.0
+
+### Minor Changes
+
+- ed5ef9b: Add storyboard skill for multi-surface design audits
+
+  The `storyboard` skill produces a single HTML page that stitches every UX surface in a scope of work into one reviewable view — each existing mock embedded as a live `<iframe>`, a flow diagram showing how the user moves through them, per-mock audit checklists, and gap cards for mocks still to produce.
+
+  Solves the "open a dozen tabs and try to hold the flow in your head" problem. Use before any feature whose scope touches ≥ 2 UX surfaces begins implementation, before a planned chunk of work that covers multiple surfaces, or whenever the user asks for "the whole flow in one place" / "audit the mocks".
+
+  Pairs with the `impeccable` family (`/shape`, `/critique`, `/layout`, `/clarify`, `/audit`, `/polish`, `/adapt`, `/harden`, `/distill`) — the audit checklists reference these, and gap-mock production runs them.
+
+  Non-negotiables baked in: live iframes not screenshots (screenshots go stale), every gap card has brainstorm questions (forcing function for decisions before drafting), one scrollable page not a tree, `<pre>` for ASCII diagrams (prettier-safe).
+
+## 3.22.0
+
+### Minor Changes
+
+- 42599bf: feat: add teach-me skill for structured learning and tutoring
+
+  Add a new `/teach-me [topic]` skill that turns Claude into an evidence-based private tutor for any topic. Grounded in learning science research (active recall, spaced repetition, Bloom's Taxonomy, Feynman Technique, deliberate practice, metacognition).
+
+  **What it does:**
+
+  - Discovery interview to assess learner level, goals, and context
+  - Generates structured learning plans using the 80/20 principle and spiral curriculum
+  - Interactive sessions: review → teach → check → practice → reflect → log
+  - Socratic questioning — guides discovery rather than giving answers
+  - Progressive difficulty through Bloom's Taxonomy levels
+  - Spaced repetition scheduling across sessions
+  - Confidence calibration (self-rated vs actual performance)
+  - Integrates with existing skills when the topic matches (e.g., `/teach-me hexagonal-architecture` uses the hex arch skill as curriculum)
+
+  **Course generation:**
+
+  - Creates structured, standalone course materials with sessions and exercises
+  - Project-local (`learning/`) or general (`~/.claude/learning/`) placement
+  - Work-derived courses that reference actual project code as examples
+  - Cheat sheet / reference card generation
+
+  **Persistence:**
+
+  - Learning files (plan, session log, cheat sheet) persist on disk
+  - Memory system integration for cross-session continuity
+  - Automatic resume on re-invocation with spaced review
+
+  **Resources (4):**
+
+  - `learning-science.md` — evidence-based techniques reference (active recall, spaced repetition, interleaving, elaborative interrogation, desirable difficulties, testing effect, concrete examples, dual coding)
+  - `assessment-patterns.md` — Bloom's Taxonomy question bank, quiz design, feedback patterns, confidence calibration, code exercise patterns (PEMC)
+  - `course-generation.md` — templates for learning plans, course files, session materials, exercises, session logs
+  - `session-management.md` — multi-session tracking, spaced repetition scheduling, adaptation signals, graduation criteria
+
+## 3.21.0
+
+### Minor Changes
+
+- a9e65a8: feat: integrate impeccable design skills from pbakaus/impeccable
+
+  Replace the `frontend-design` skill with the comprehensive impeccable design system by Paul Bakaus. This adds 18 externally-fetched design skills (1 core + 17 steering commands) with a systematic methodology for creating distinctive, high-quality frontend interfaces.
+
+  **What changed:**
+
+  - Removed `frontend-design` skill (replaced by impeccable, which is a strict superset)
+  - Added external fetch of 18 impeccable skills from [pbakaus/impeccable](https://github.com/pbakaus/impeccable):
+    - Core: `impeccable` (with 9 reference files for typography, color, spatial design, motion, interaction, responsive, UX writing, craft flow, extract flow)
+    - Steering commands: `shape`, `critique`, `audit`, `polish`, `harden`, `typeset`, `colorize`, `animate`, `layout`, `clarify`, `adapt`, `bolder`, `quieter`, `distill`, `delight`, `optimize`, `overdrive`
+    - Critique reference files: cognitive-load, heuristics-scoring, personas
+  - Added `--no-impeccable` install flag (and `--no-external` now skips both web-quality-skills and impeccable)
+  - Added impeccable workflow documentation to README
+  - Apache 2.0 license and NOTICE files stored alongside skills for attribution compliance
+
+  **Getting started:**
+
+  - `/impeccable teach` - Set up design context for your project
+  - `/impeccable craft [feature]` - Full shape-build-iterate design flow
+  - `/critique` - UX review with Nielsen's heuristics scoring
+  - `/polish` - Final quality pass
+
+  Attribution: [Paul Bakaus](https://github.com/pbakaus/impeccable) (Apache 2.0 License)
+
+## 3.20.0
+
+### Minor Changes
+
+- 067db3c: Add consolidated diagrams skill for Markdown visualizations
+
+  - New `diagrams` skill with decision-tree router for 8 diagram engines
+  - Covers Mermaid, Graphviz, Vega-Lite, PlantUML, Infographic, JSON Canvas, Architecture (HTML), and Infocard (HTML)
+  - Consolidates 15 upstream skills into 1 directory with 8 reference files
+  - PlantUML reference covers UML, cloud (AWS/Azure/GCP), network, security, ArchiMate, BPMN, data analytics, and IoT
+  - Includes examples file with 15 rendered diagram samples
+  - Adapted from markdown-viewer/skills (MIT license) with proper attribution
+
+## 3.19.3
+
+### Patch Changes
+
+- 0551337: fix: improve characterisation-tests and finding-seams skills
+
+  characterisation-tests:
+
+  - Add async characterisation guidance with worked examples (SKILL.md + writing-process.md)
+  - Mention "golden master testing" as alternative name for discoverability
+  - Replace beforeEach/afterEach fake timers with withFrozenTime helper in modern-tooling.md
+  - Replace jest-extended-snapshot example with pure Vitest it.each + inline snapshot approach
+  - Add "not awaiting async results" to common mistakes table
+
+  finding-seams:
+
+  - Add inline worked example to main SKILL.md so it's useful without loading resources
+  - Add code smell → technique quick-lookup table
+  - Fix duplicate `const calculateOrder` variable name in seam-types.md
+  - Add async seam patterns (seam-types.md + creating-seams.md Technique 6)
+  - Add seam granularity guidance (when to create a seam vs when not to)
+
+## 3.19.2
+
+### Patch Changes
+
+- c71ebe3: Final polish for legacy code skills based on second review round
+
+  **characterisation-tests:**
+
+  - Add explicit "When NOT to Use" section (greenfield code, existing specs, adequate
+    test coverage, permanent strategy)
+  - Add "Naming and Identification" section: `characterises` prefix in test names,
+    `.characterisation.test.ts` file suffix, block comment explaining purpose and
+    lifecycle, SUSPICIOUS markers for potential bugs. Another LLM or human should
+    immediately recognise these as temporary characterisation tests.
+  - Update worked example to follow naming conventions
+  - Fix External Service Responses guidance in modern-tooling.md to recommend
+    parameter injection first (consistent with finding-seams "last resort" messaging)
+
+  **finding-seams:**
+
+  - Fix sensing example in seam-types.md: remove type assertion, return defensive
+    copy from closure
+  - Fix inMemoryStorage in creating-seams.md: return defensive copy, simplify
+    verbose return type annotation
+
+## 3.19.1
+
+### Patch Changes
+
+- ef3e5ba: Align finding-seams and characterisation-tests skills with FP-first principles
+
+  Both skills were too class-heavy, reading like they were written for an OOP/Java audience
+  rather than for a TypeScript FP workflow. This brings them in line with the functional skill's
+  conventions.
+
+  **finding-seams:**
+
+  - Reorder to lead with function parameter injection as the primary seam technique
+  - Move class-based patterns (object seams, extract and override, parameterize constructor) to
+    a separate `resources/oop-patterns.md` with clear "legacy OOP" framing
+  - Add React/Next.js seam examples (props as seams, context as seams, MSW for API boundaries)
+  - Add connection to hexagonal architecture (ports = designed-in seams)
+  - Strengthen `vi.mock()` warning as last-resort scaffolding
+  - Replace over-engineered class examples with simple default parameters
+
+  **characterisation-tests:**
+
+  - Add "when to stop" heuristic (cover every branch your change touches + one layer out)
+  - Add mutation testing validation step after characterising
+  - Replace monkey-patching sensing with parameter injection
+  - Add anti-pattern for `vi.mock()` sensing in common mistakes table
+
+## 3.19.0
+
+### Minor Changes
+
+- 7fd646d: Add finding-seams and characterisation-tests skills
+
+  Two new skills extracted from Michael Feathers' Working Effectively with Legacy Code (2004), adapted for TypeScript/JavaScript. These fill a gap in the existing skill set -- the current workflow (tdd, testing, mutation-testing, refactoring) assumes code is already testable. These two skills address the prerequisite step: making untestable legacy code testable and documenting its existing behavior before changing it.
+
+  **finding-seams** -- identify substitution points (seams) that make legacy or tightly-coupled code testable without editing at the call site:
+
+  - SKILL.md: core concept, seam types quick reference, how to find seams, progression from quick-fix to proper design
+  - resources/seam-types.md: module, object, function parameter, and configuration seams with TypeScript examples
+  - resources/creating-seams.md: six techniques for introducing seams (extract and override, parameterize method/constructor, extract interface, wrap static calls, module indirection)
+
+  **characterisation-tests** -- document actual behavior of existing code before making changes:
+
+  - SKILL.md: core concept, the 5-step algorithm, heuristics, handling bugs, temporary nature of characterisation tests
+  - resources/writing-process.md: worked example with targeted testing, sensing variables, pinch points
+  - resources/modern-tooling.md: Vitest snapshots, combination testing, non-determinism handling, approval testing, coverage-guided characterisation
+
+## 3.18.0
+
+### Minor Changes
+
+- 3cfe887: Add cli-design skill for Unix-composable CLI patterns
+
+  New skill covering how to build CLI tools that compose well in Unix pipelines. Language-agnostic core principles (stdout/stderr stream separation, format flags, exit codes, TTY detection, composability, error design) with TypeScript implementation patterns in resources/.
+
+  - SKILL.md: language-agnostic CLI design principles
+  - resources/output-architecture.md: TypeScript patterns (Result types, entry point wiring, formatters, JSON envelope)
+  - resources/testing-cli.md: Vitest testing patterns (stream separation, exit codes, pipe simulation, contract tests)
+  - resources/stream-contracts.md: buffering behavior, NDJSON, signal handling, crash-only design
+
+  Synthesized from 8 authoritative sources: clig.dev, 12 Factor CLI Apps, Heroku CLI Style Guide, galligan's three-layer architecture, yogin16/better-cli, steipete/create-cli, lirantal/nodejs-cli-apps-best-practices, Orhun Parmaksiz stdout vs stderr.
+
+## 3.17.1
+
+### Patch Changes
+
+- a0192cb: Make api-design skill flexible on error response format
+
+  RFC 9457 Problem Details is now recommended for public APIs with external consumers. Internal APIs with a single frontend can use a simpler consistent shape (error code + optional message + field errors). The key requirement is consistency across endpoints, not a specific format.
+
+  - Add "Choosing an Error Format" section with guidance by API type
+  - Show simpler ApiError shape as a valid alternative
+  - Update verification checklist to accept either format
+  - Update Content-Type guidance for both formats
+
+## 3.17.0
+
+### Minor Changes
+
+- cd92a7e: feat: enrich api-design skill with RFC BCP guidance (HTTP fundamentals, JWT/OAuth security, caching)
+
+  New resources:
+
+  - `http-fundamentals.md`: HTTP protocol guidance from RFC 9205 (BCP 56) — caching, URI design, browser security, content negotiation, status code discipline
+  - `auth-security.md`: JWT and OAuth 2.0 security deep-dive from RFC 8725 (BCP 225) and RFC 9700 (BCP 240) — algorithm allowlisting, PKCE, token handling, redirect validation
+
+  Updates:
+
+  - `api-design/SKILL.md`: added HTTP Caching section, URI Ownership principle, header naming guidance (no X- prefix), browser security headers in red flags and verification checklist
+  - `api-security.md`: expanded JWT/OAuth sections with RFC references, added Browser Security Headers and Transport Security sections, expanded security checklist
+  - `REFERENCES.md`: added 9 new RFC/BCP sources (RFC 9205, 8820, 8725, 9700, 9325, 8996, 6648, 8941, 6302)
+  - `twelve-factor/SKILL.md`: added RFC 6302 (BCP 162) logging recommendations for internet-facing servers to Factor XI
+
+### Patch Changes
+
+- 8cbaacc: fix: add missing resource files and REFERENCES.md to install script
+
+  The install script only downloaded SKILL.md for each skill but missed 15 deep-dive resource files across hexagonal-architecture (5), domain-driven-design (6), and api-design (4), plus REFERENCES.md. Also removes accidentally committed plans/ddd-hex-arch-95-plus.md.
+
+- a60cb31: fix: remove protocol-spec guidance not relevant to normal web development
+
+  Removed content aimed at protocol specification authors rather than web developers:
+
+  - URI Ownership / URI Design & Discovery (RFC 8820) — not relevant when documenting your own API
+  - Content Negotiation custom media type registration — most web devs use application/json
+  - Versioning via HTTP Mechanisms (link relations, media types) — already covered practically in api-evolution.md
+  - Protocol Version Independence — devs don't specify HTTP versions
+  - Weak Algorithm Avoidance details (deterministic ECDSA, RSA-PKCS1 v1.5) — implementation details most devs never touch
+  - Client Authentication (mTLS, Private Key JWT) — enterprise-grade, not typical web dev
+  - Mix-Up Attack Defense — niche scenario (multiple auth servers)
+  - Structured Fields (RFC 8941) references — most devs don't design new HTTP header formats
+
+## 3.16.0
+
+### Minor Changes
+
+- 05483d7: feat: add api-design skill with deep-dive resources
+
+  Adapted from addyosmani/agent-skills, significantly expanded and modified to align with existing conventions.
+
+  Main skill covers:
+
+  - Hyrum's Law, One-Version Rule, contract-first development
+  - RFC 9457 error semantics (Problem Details for HTTP APIs) with security considerations
+  - Idempotency patterns (Stripe's idempotency keys for POST)
+  - Rate limiting (standard headers, 429 responses, Retry-After)
+  - REST conventions, pagination, filtering, input/output separation
+  - Backward compatibility, red flags, rationalizations, verification checklist
+
+  Deep-dive resources:
+
+  - resources/api-evolution.md — versioning strategies (Stripe date-pinning, URL, header), Postel's Law, Sunset/Deprecation headers, enum evolution, consumer-driven contract testing (Pact)
+  - resources/api-security.md — OWASP API Security Top 10 with TypeScript examples, authentication patterns (API keys, OAuth2+PKCE, JWT), security checklist
+
+  REFERENCES.md updated with authoritative sources (RFC 9457, RFC 8594, OWASP, Google/Microsoft/Zalando API guides, Brandur Leach, Phil Sturgeon, Arnaud Lauret, Joshua Bloch)
+
+## 3.15.0
+
+### Minor Changes
+
+- eb50c18: Reorder TDD cycle to RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR (credit: Eran Boudjnah)
+
+  **Core change:** Mutation testing now comes _before_ refactoring in the TDD cycle, not after. You verify test strength before restructuring code, so you refactor with genuine confidence that your tests catch real bugs.
+
+  **Rename:** The "FIX" step (previously only in the planning skill) is renamed to "KILL MUTANTS" and promoted to a core step everywhere.
+
+  The full cycle is now: RED → GREEN → MUTATE → KILL MUTANTS → REFACTOR
+
+  **Why this order matters:** The previous RED-GREEN-REFACTOR-MUTATE ordering meant refactoring code whose test effectiveness was unverified. By mutating first, you validate your safety net before changing structure. This insight was pointed out by Eran Boudjnah on LinkedIn.
+
+  **tdd skill:**
+
+  - Core cycle updated to RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR
+  - MUTATE and KILL MUTANTS added as explicit phases with guidance
+  - Commit history examples updated to show mutation testing step
+  - Summary checklist includes mutation testing verification
+
+  **mutation-testing skill:**
+
+  - Integration diagram updated to show MUTATE as step 3 of the core cycle (not a separate validation step)
+  - Added rationale for why MUTATE comes before REFACTOR
+
+  **refactoring skill:**
+
+  - Repositioned as the final step of TDD (after mutation testing)
+  - Workflow updated to include MUTATE and KILL MUTANTS before refactoring
+
+  **planning skill:**
+
+  - Extended cycle reordered to CONFIRM-RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR-STOP
+  - Step template and quick reference updated
+
+  **plan command:**
+
+  - Step template reordered to match new cycle
+
+  **tdd-guardian agent:**
+
+  - Sacred Cycle updated to 5 steps
+  - Added MUTATE and KILL MUTANTS phase coaching guidance
+  - Response patterns updated to include mutation testing before refactoring
+
+  **refactor-scan agent:**
+
+  - Description updated: invoked after mutation testing, not after GREEN
+
+  **progress-guardian agent:**
+
+  - Workflow reference updated
+
+  **agents README:**
+
+  - All cycle references updated
+  - Workflow diagrams updated
+
+  **CLAUDE.md:**
+
+  - Core principle and quick reference updated
+
+  **README.md:**
+
+  - All workflow descriptions updated with new cycle and rationale
+
+  **REFERENCES.md:**
+
+  - Added Eran Boudjnah credit for the RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR reordering insight
+
+## 3.14.0
+
+### Minor Changes
+
+- a593cf0: Mutation testing skill now instructs literal code mutation and test execution, not just analysis
+
+  **mutation-testing skill:**
+
+  - Replaced analytical "Generate Mental Mutants" process with literal mutate-run-revert cycles
+  - AI actually changes production code, runs the test suite, evaluates results, and reverts
+  - Produces a structured mutation testing report (killed/survived/score)
+  - Added nuance for surviving mutants: fix critical ones immediately, ask the human when value is unclear
+
+  **planning skill:**
+
+  - Added CONFIRM gate: human must approve acceptance criteria before each step begins
+  - Expanded cycle to RED-GREEN-REFACTOR-MUTATE-FIX with explicit "kill surviving mutants" step
+  - Human reviews mutation testing report and approves before every commit
+  - Step template now requires specific, observable acceptance criteria per step
+  - Clarified test level guidance: prefer unit tests (vitest) for logic, browser tests (vitest browser mode) for UI, Playwright only for end-to-end flows
+  - Now references `tdd` skill for workflow alongside `testing` skill for factory patterns
+
+## 3.13.0
+
+### Minor Changes
+
+- 753c1bb: Restructure DDD and hexagonal architecture skills with decision frameworks, deep-dive resources, and authoritative references
+
+  **DDD skill (6 resources)** based on Evans, Vernon, Fowler, Stemmler, Wlaschin, Khorikov, Chassaing, Microsoft:
+
+  - "Where Does This Code Belong?" decision framework (purity is necessary but not sufficient)
+  - Model evolution as first-class principle ("Resisting Model Evolution" anti-pattern)
+  - Domain services with comparison table vs use cases
+  - Always-valid entities principle
+  - Make Illegal States Unrepresentable: boolean-to-union + exhaustive switch with `never`
+  - Domain Events: Decider pattern, in-process dispatch, outbox pattern, process managers
+  - Value object equality, Currency type, Zod bridging, reconstitution from persistence
+  - Glossary supports multiple bounded contexts
+  - Branded type factories with validation-then-brand pattern
+  - Specifications (predicate functions) as named building block
+  - Bounded Contexts: ACL, context mapping, comprehensive discovery methodology (language test, signal strength, workflow mapping)
+  - Error modeling (result types for business outcomes, exceptions for invariant violations, factory-vs-schema boundary)
+  - Property-based testing with fast-check
+  - Optimistic locking with version fields
+  - Interface vs type rationale for repository ports
+  - Use case placement resolved to domain/ (no ambiguity)
+  - Resource loading heuristics ("Load when..." table)
+  - Resources: `aggregate-design.md`, `domain-services.md`, `testing-by-layer.md`, `domain-events.md`, `bounded-contexts.md`, `error-modeling.md`
+
+  **Hex arch skill (5 resources)** based on Cockburn, Pierrain, Graca, Netflix, Seemann, Valentina Jemuović:
+
+  - Driving (left) vs driven (right) adapter distinction with visual diagram
+  - CQRS-lite (reads bypass repositories, query functions JOIN freely)
+  - DI via impureim sandwich (Seemann), wrong/right comparison, composition roots
+  - Event-driven driving adapters (SQS consumer) + event publishing port
+  - Adapter error handling (domain-specific errors for constraint violations)
+  - Cross-cutting concerns (auth vs authz, logging, transactions, error formatting)
+  - Anti-patterns with code examples (5 patterns, all wrong/right)
+  - Use case naming convention (business language, not pattern suffixes)
+  - Full stack worked example (one feature through every layer with tests and file map)
+  - Incremental adoption guide (strangler fig, step-by-step extraction)
+  - File organization accurately labels use cases as orchestration
+  - Mutable fakes acknowledged as deliberate testing-only exception
+  - createTestDb helper (fresh DB per test, no shared state)
+  - Inline Valentina Jemuović attribution in testing resources
+  - Resource loading heuristics ("Load when..." table)
+  - Resources: `cqrs-lite.md`, `testing-hex-arch.md`, `worked-example.md`, `cross-cutting-concerns.md`, `incremental-adoption.md`
+
+  **New: REFERENCES.md** — 15+ authoritative sources with clickable URLs and bidirectional traceability. Sources: Evans, Vernon, Fowler, Wlaschin, Chassaing, Khorikov, Greg Young, Udi Dahan, Stemmler, Gorodinski, Microsoft, Cockburn, Pierrain, Graca, Netflix, Seemann, Valentina Jemuović (5 article URLs), Farley, Beck, Bernhardt.
+
+  **README** — dedicated showcase sections for hex arch and DDD with code examples, matching the format of testing, TypeScript, TDD sections.
+
+## 3.12.1
+
+### Patch Changes
+
+- 4fe1ab1: Add "extract for readability, not testability" rule to testing and refactoring skills
+
+  - testing skill: new section "Don't Extract for Testability" with examples showing inline code tested through behavioral tests vs over-extracted unit-tested functions
+  - refactoring skill: added to "When NOT to Refactor" list, referencing existing DRY rules
+
+## 3.12.0
+
+### Minor Changes
+
+- 5cf7c5b: Add twelve-factor app skill and audit agent
+
+  - New `twelve-factor` skill with actionable TypeScript patterns for 12-factor compliant services
+  - New `twelve-factor-audit` agent for auditing existing codebases against the methodology
+  - Greenfield projects must follow all factors; brownfield projects adopt incrementally
+  - Covers config, dependencies, backing services, stateless processes, disposability, logging
+  - Integrated with `/setup` command for automatic detection of 12-factor patterns
+
+## 3.11.2
+
+### Patch Changes
+
+- ea35242: Enforce TDD in plan documents
+
+  - Plan step template now uses RED/GREEN/REFACTOR labels instead of Test/Implementation
+  - Acceptance criteria must describe observable behaviour, not implementation details
+  - Plans must read project CLAUDE.md and testing rules before writing steps
+  - DDD glossary check wording clarified: mandatory when the project uses DDD
+  - Added constraints: TDD mandatory, test behaviour not implementation, read project testing rules
+
+## 3.11.1
+
+### Patch Changes
+
+- 7a7099a: fix: strip incompatible frontmatter when copying agents/commands to OpenCode
+
+  OpenCode validates agent frontmatter strictly — `tools` must be an object (not a string), `color` must be hex (not a named color), and `allowed-tools` is not a recognised field. The installer now copies files with `sed` to strip these Claude Code-specific fields instead of symlinking, fixing the "Configuration is invalid" error on startup.
+
+## 3.11.0
+
+### Minor Changes
+
+- 052edae: feat: add full OpenCode compatibility for commands and agents
+
+  OpenCode uses different directory paths for discovering slash commands and agents:
+
+  - Commands: `~/.config/opencode/command/` (singular) vs Claude Code's `~/.claude/commands/`
+  - Agents: `~/.config/opencode/agent/` (singular) vs Claude Code's `~/.claude/agents/`
+
+  The installer now creates symlinks from OpenCode's expected directories to the Claude Code
+  source files when using `--with-opencode` or `--opencode-only`, so all 5 slash commands
+  and 9 agents work identically in both tools with zero duplication.
+
+  Also updated `opencode.json` to include agent instructions in the `instructions` array.
+
+## 3.10.0
+
+### Minor Changes
+
+- 314bbeb: Replace single PLAN.md with plans/ directory system:
+
+  - Plans now live in `plans/<feature-name>.md` — multiple plans can coexist without conflicts across branches or worktrees
+  - Remove WIP.md and LEARNINGS.md — simplify to just plan files that get deleted when complete
+  - Remove PLANS.md index file — the directory itself is the index, avoiding merge conflicts
+  - Update /plan command, /continue command, planning skill, progress-guardian agent, agents README, and main README for consistency
+  - Fix /plan command to create regular PR (not draft)
+
+## 3.9.1
+
+### Patch Changes
+
+- 4178488: Add pre-PR quality gate and small PRs preference:
+
+  - Add mutation testing and refactoring assessment as explicit pre-PR steps in recommended flow, agents README, /plan and /pr commands
+  - Add "Prefer Multiple Small PRs" section to planning skill
+  - Remove arbitrary numeric thresholds (line counts, minute counts, file counts) from planning skill, expectations skill, refactor-scan agent, and learn agent
+
+## 3.9.0
+
+### Minor Changes
+
+- 0819e82: Improvements based on Claude Code insights analysis (63 sessions):
+
+  - Add output guardrails section to CLAUDE.md (write to files, plan-only mode, incremental output)
+  - Add ci-debugging skill for systematic CI failure diagnosis
+  - Add /plan slash command for plan-only workflows
+  - Add /continue slash command for post-merge workflow (pull, branch, update plan)
+  - Improve /generate-pr-review to also generate project hooks and /pr command
+  - Deduplicate typescript-strict and functional skills (~460 lines removed)
+  - Extract hexagonal-architecture as opt-in skill (not all projects use it)
+  - Add domain-driven-design as opt-in skill with glossary enforcement
+  - Add typecheck hook pattern docs and hexagonal-architecture reference to CLAUDE.md
+  - Add agent decision framework to agents README
+  - Trim adr agent (~585 → ~250 lines) and ts-enforcer agent (~649 → ~300 lines) via cross-references
+  - Update front-end-testing and react-testing skills to recommend Vitest Browser Mode
+  - Add cross-references between testing, mutation-testing, and test-design-reviewer skills
+  - Add Pick<T> tip to testing skill factory pattern
+  - Add corrected example to refactoring skill speculative code section
+  - Update skills list in CLAUDE.md header to include all 15 skills
+  - Add /setup command for one-shot project onboarding (replaces /init)
+  - Update README.md with all new skills, commands, and Vitest Browser Mode references
+  - Update install-claude.sh to include all 15 skills and 5 commands
+  - Add "Recommended Flow" section to README and agents README showing full command lifecycle with rationale
+  - Improve skill frontmatter descriptions with trigger phrases and negative triggers per Anthropic best practices
+  - Add Playwright/Browser Mode test idempotency requirement to front-end-testing and react-testing skills
+
+## 3.8.0
+
+### Minor Changes
+
+- 04e245e: Add frontend-design skill from anthropics/skills (Apache 2.0 licensed)
+
 ## 3.7.0
 
 ### Minor Changes

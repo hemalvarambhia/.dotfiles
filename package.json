@@ -1,6 +1,6 @@
 {
   "name": "@paulhammond/dotfiles",
-  "version": "3.7.0",
+  "version": "3.35.0",
   "private": true,
   "description": "Personal dotfiles including CLAUDE.md development framework and Claude Code agents",
   "repository": {
@@ -17,6 +17,7 @@
   "author": "Paul Hammond",
   "license": "MIT",
   "scripts": {
+    "test": "./test/run.sh",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "changeset publish"

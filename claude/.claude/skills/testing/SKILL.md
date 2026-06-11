@@ -1,15 +1,39 @@
 ---
 name: testing
-description: Testing patterns for behavior-driven tests. Use when writing tests or test factories.
+description: Testing patterns for behavior-driven tests. Use when writing tests, creating test factories, structuring test files, or deciding what to test. Do NOT use for UI-specific testing (see front-end-testing or react-testing skills).
 ---
 
 # Testing Patterns
+
+For verifying test effectiveness through mutation analysis, load the `mutation-testing` skill. Use its mutator rules while planning and writing tests, not only after tests exist. For evaluating test quality against Dave Farley's properties, load the `test-design-reviewer` skill.
 
 ## Core Principle
 
 **Test behavior, not implementation.** 100% coverage through business behavior, not implementation details.
 
 **Example:** Validation code in `payment-validator.ts` gets 100% coverage by testing `processPayment()` behavior, NOT by directly testing validator functions.
+
+---
+
+## Mutation-Aware Test Planning
+
+When planning or writing tests, automatically scan the intended behavior and changed production code against the mutator rules from the `mutation-testing` skill's `resources/mutator-rules.md` resource. A good test should fail if a realistic mutant changes the behavior.
+
+Load that resource when the code under test includes conditionals, arithmetic, equality, boolean logic, array/string operations, optional chaining, or meaningful side effects. Use it to identify likely surviving mutants before the Stryker run.
+
+When the scan finds an obvious gap, add or strengthen a behavior test immediately. When the gap depends on product or domain judgment, use the harness's ask-question facility before choosing a test. Ask one concise question with concrete choices, explain the potential mutant, and state the tradeoff.
+
+Example ask-question prompt:
+
+```markdown
+The discount rule uses `subtotal >= 100`, but current tests only cover `150`.
+Should the exact `100` boundary receive the discount?
+- Yes: add a boundary test for `100`
+- No: change/confirm the rule as `subtotal > 100`
+- Unspecified: document the behavior as intentionally not guaranteed
+```
+
+Do not ask when the gap is plainly a missing assertion, missing boundary, missing branch, or missing side-effect check. Fix those directly.
 
 ---
 
@@ -28,7 +52,7 @@ Never test implementation details. Test behavior through public APIs.
 ```typescript
 // ❌ Testing HOW (implementation detail)
 it('should call validateAmount', () => {
-  const spy = jest.spyOn(validator, 'validateAmount');
+  const spy = vi.spyOn(validator, 'validateAmount');
   processPayment(payment);
   expect(spy).toHaveBeenCalled(); // Tests HOW, not WHAT
 });
@@ -111,6 +135,48 @@ describe('processPayment', () => {
 
 ---
 
+## Don't Extract for Testability
+
+Never extract a function into its own file purely to give it its own unit test. Extract for readability (a descriptive name clarifies intent), for DRY (same **knowledge** used in multiple places — see the `refactoring` skill's "DRY = Knowledge, Not Code" rule), or for separation of concerns. Not for testability.
+
+If code is inline in a function, it gets coverage through that function's behavioral tests. Every layer has behavioral tests — domain functions have vitest unit tests, components have browser tests, pages have integration tests. There is no gap.
+
+The anti-pattern is creating a 1:1 mapping between extracted helpers and test files (see "No 1:1 Mapping" below). The extracted helper is an implementation detail of its consumer. Test the consumer's behavior.
+
+❌ **WRONG — Extracted single-use helper with its own test file:**
+```typescript
+// prepare-participant-data.ts (new file, one caller)
+export const prepareParticipantData = (items: Item[]) => ({
+  yourClaims: items.filter(i => i.isClaimed && i.isClaimedByCurrentUser),
+  available: items.filter(i => !i.isClaimedByCurrentUser),
+});
+
+// prepare-participant-data.test.ts (tests the helper directly)
+it('filters claims', () => { ... });
+```
+
+✅ **CORRECT — Inline in the consuming function, tested through its behavior:**
+```typescript
+// load-participant-view.ts
+export const loadParticipantView = async (db, eventId, userId) => {
+  const items = await getItems(db, eventId);
+  const yourClaims = items.filter(i => i.isClaimed && i.isClaimedByCurrentUser);
+  const available = items.filter(i => !i.isClaimedByCurrentUser);
+  return { yourClaims, available };
+};
+
+// The behavioral test for loadParticipantView covers the filtering:
+it('returns claimed gifts in yourClaims and unclaimed in available', () => {
+  const result = await loadParticipantView(db, eventId, userId);
+  expect(result.yourClaims).toHaveLength(1);
+  expect(result.available).toHaveLength(2);
+});
+```
+
+**When extraction IS justified (DRY):** If the same filtering logic is used by multiple consumers with the same business meaning, extract it. But test it through each consumer's behavior, not as an isolated unit.
+
+---
+
 ## Test Factory Pattern
 
 For test data, use factory functions with optional overrides.
@@ -165,6 +231,8 @@ const getMockUser = (overrides?: Partial<User>): User => {
 - Ensures test data is valid according to production schema
 - Catches breaking changes early (schema changes fail tests)
 - Single source of truth (no schema redefinition)
+
+**Tip:** For factories where only a subset of fields are relevant, use `Pick<T, 'field1' | 'field2'>` for the overrides parameter to constrain what callers can customize.
 
 ### Factory Composition
 
@@ -285,7 +353,7 @@ Watch for these patterns that give fake 100% coverage:
 ❌ **WRONG** - Gives 100% coverage but tests nothing:
 ```typescript
 it('calls validator', () => {
-  const spy = jest.spyOn(validator, 'validate');
+  const spy = vi.spyOn(validator, 'validate');
   validate(payment);
   expect(spy).toHaveBeenCalled(); // Meaningless assertion
 });
@@ -306,7 +374,7 @@ it('should reject invalid payment', () => {
 ❌ **WRONG** - No behavior validation:
 ```typescript
 it('processes payment', () => {
-  const spy = jest.spyOn(processor, 'process');
+  const spy = vi.spyOn(processor, 'process');
   handlePayment(payment);
   expect(spy).toHaveBeenCalledWith(payment); // So what?
 });
@@ -321,6 +389,8 @@ it('should process payment and return transaction ID', () => {
   expect(result.transactionId).toBeDefined();
 });
 ```
+
+**Exception**: asserting on a callback passed in through the public API is behavior testing, not coverage theater. When a component or function accepts a callback (e.g. an `onSubmit` prop), that callback contract IS the output — `expect(handleSubmit).toHaveBeenCalledWith(...)` verifies observable behavior. What this pattern forbids is spying on internal collaborators the caller never provided.
 
 ### Pattern 3: Test trivial getters/setters
 

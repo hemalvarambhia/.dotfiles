@@ -1,15 +1,15 @@
 ---
 name: refactoring
-description: Refactoring assessment and patterns. Use after tests pass (GREEN phase) to assess improvement opportunities.
+description: Refactoring assessment and patterns for already-tested code. Use when the user asks to refactor, clean up, simplify, or restructure existing code, and automatically after mutation testing validates test strength (the REFACTOR step of the TDD cycle). Covers commit-before-refactoring discipline, when refactoring adds value vs when to skip it, and the priority classification of improvement opportunities. Do NOT use for untested code (see characterisation-tests and finding-seams first) or for adding behavior (see tdd).
 ---
 
 # Refactoring
 
-Refactoring is the third step of TDD. After GREEN, assess if refactoring adds value.
+Refactoring is the final step of TDD. After mutation testing confirms test strength, assess if refactoring adds value.
 
 ## When to Refactor
 
-- Always assess after green
+- Always assess after mutation testing confirms test strength
 - Only refactor if it improves the code
 - **Commit working code BEFORE refactoring** (critical safety net)
 
@@ -23,9 +23,11 @@ Having a working baseline before refactoring:
 
 **Workflow:**
 1. GREEN: Tests pass
-2. COMMIT: Save working code
-3. REFACTOR: Improve structure
-4. COMMIT: Save refactored code
+2. MUTATE: Verify test effectiveness
+3. KILL MUTANTS: Address surviving mutants
+4. COMMIT: Save working code with strong tests
+5. REFACTOR: Improve structure
+6. COMMIT: Save refactored code
 
 ## Priority Classification
 
@@ -51,7 +53,7 @@ Having a working baseline before refactoring:
 ## Example Assessment
 
 ```typescript
-// After GREEN:
+// After MUTATE + KILL MUTANTS:
 const processOrder = (order: Order): ProcessedOrder => {
   const itemsTotal = order.items.reduce((sum, item) => sum + item.price, 0);
   const shipping = itemsTotal > 50 ? 0 : 5.99;
@@ -76,7 +78,18 @@ If code isn't driven by a failing test, don't write it.
 - Code written "for future flexibility"
 - Untested error handling paths
 
-**What to do**: Delete speculative code. Add behavior tests instead.
+✅ **Correct approach**: Delete speculative code. If the behavior is needed, write a failing test that demands it, then implement.
+
+```typescript
+// ❌ WRONG - Speculative error handling (no test demands this)
+if (items.length === 0) {
+  throw new Error('Empty cart'); // No test for this path!
+}
+
+// ✅ CORRECT - Test-driven error handling
+// First: write a test that expects this behavior
+// Then: implement the guard clause to make it pass
+```
 
 ---
 
@@ -89,6 +102,7 @@ Don't refactor when:
 - ❌ Would change behavior (that's a feature, not refactoring)
 - ❌ Premature optimization
 - ❌ Code is "good enough" for current phase
+- ❌ **Extracting purely for testability** — if the only reason to move code into a separate file is "so we can unit test it", keep it inline. The consuming function already has behavioral tests that cover this code. Extract for readability, DRY (same knowledge used in multiple places — see "DRY = Knowledge, Not Code" above), or separation of concerns, never for testability alone.
 
 **Remember**: Refactoring should improve code structure without changing behavior.
 

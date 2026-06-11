@@ -1,249 +1,244 @@
 ---
 name: react-testing
-description: React Testing Library patterns for testing React components, hooks, and context. Use when testing React applications.
+description: React component testing patterns including components, hooks, context, and forms. Covers Vitest Browser Mode with vitest-browser-react (preferred) and @testing-library/react. Use when testing React applications. For general UI testing patterns, see the front-end-testing skill.
 ---
 
-# React Testing Library
+# React Testing
 
-This skill focuses on React-specific testing patterns. For general DOM testing patterns (queries, userEvent, async, accessibility), load the `front-end-testing` skill. For TDD workflow, load the `tdd` skill.
+For general UI testing patterns (queries, events, async, accessibility, MSW), load the `front-end-testing` skill. For TDD workflow, load the `tdd` skill.
+
+**Deep-dive resources** are in the `resources/` directory. Load them on demand:
+
+| Resource | Load when... |
+|----------|-------------|
+| `resources/testing-library-react-legacy.md` | Working in a `@testing-library/react` + jsdom codebase — sync render, `screen` queries, imported `act`, render helpers, legacy form/hook/context examples |
 
 ---
 
-## Testing React Components
+## Vitest Browser Mode with React (Preferred)
 
-**React components are just functions that return JSX.** Test them like functions: inputs (props) → output (rendered DOM).
+**Always prefer `vitest-browser-react` over `@testing-library/react`.** Tests run in a real browser, giving production-accurate rendering, events, and CSS.
 
-### Basic Component Testing
+### Setup
 
-```tsx
-// ✅ CORRECT - Test component behavior
-it('should display user name when provided', () => {
-  render(<UserProfile name="Alice" email="alice@example.com" />);
+Extend the Browser Mode config from the `front-end-testing` skill with the React plugin and `vitest-browser-react`:
 
-  expect(screen.getByText(/alice/i)).toBeInTheDocument();
-  expect(screen.getByText(/alice@example.com/i)).toBeInTheDocument();
-});
+```bash
+npm install -D vitest @vitest/browser-playwright vitest-browser-react @vitejs/plugin-react
 ```
 
-```tsx
-// ❌ WRONG - Testing implementation
-it('should set name state', () => {
-  const wrapper = mount(<UserProfile name="Alice" />);
-  expect(wrapper.state('name')).toBe('Alice'); // Internal state!
-});
+```typescript
+// vitest.config.ts — same as front-end-testing Browser Mode config, plus:
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    browser: { /* unchanged from front-end-testing setup */ },
+  },
+})
 ```
 
-### Testing Props
+### Component Testing
 
 ```tsx
-// ✅ CORRECT - Test how props affect rendered output
-it('should call onSubmit when form submitted', async () => {
-  const handleSubmit = vi.fn();
-  const user = userEvent.setup();
+import { render } from 'vitest-browser-react'
+import { expect, test } from 'vitest'
 
-  render(<LoginForm onSubmit={handleSubmit} />);
+test('should display user name when provided', async () => {
+  const screen = await render(<UserProfile name="Alice" email="alice@example.com" />)
 
-  await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-  await user.click(screen.getByRole('button', { name: /submit/i }));
+  await expect.element(screen.getByText(/alice/i)).toBeVisible()
+  await expect.element(screen.getByText(/alice@example.com/i)).toBeVisible()
+})
+```
+
+**Key differences from `@testing-library/react`:**
+- `render()` and `renderHook()` are async — use `await`
+- Returns a `screen` scoped to the rendered component
+- Use `expect.element()` for auto-retrying assertions
+- No `act()` wrapper needed for component interactions via locators — CDP events + retry handle timing. `renderHook` state updates still need `act` (returned by `renderHook`, see below)
+- Auto-cleanup happens before each test (not after), so components stay visible for debugging
+
+### Testing Props and Callbacks
+
+```tsx
+test('should call onSubmit when form submitted', async () => {
+  const handleSubmit = vi.fn()
+  const screen = await render(<LoginForm onSubmit={handleSubmit} />)
+
+  await screen.getByLabelText(/email/i).fill('test@example.com')
+  await screen.getByRole('button', { name: /submit/i }).click()
 
   expect(handleSubmit).toHaveBeenCalledWith({
     email: 'test@example.com',
-  });
-});
+  })
+})
 ```
 
-### Testing Conditional Rendering
+### Testing Conditional Rendering (with MSW)
+
+Browser Mode tests run in a real browser, so use MSW's `setupWorker` (`msw/browser`) — not `setupServer`. Start the worker in a setup file and override per test with `worker.use()`. Full setup: `front-end-testing` skill, `resources/msw.md`.
 
 ```tsx
-// ✅ CORRECT - Test what user sees in different states
-it('should show error message when login fails', async () => {
-  server.use(
+import { http, HttpResponse } from 'msw'
+import { worker } from '../vitest.browser.setup'
+
+test('should show error message when login fails', async () => {
+  worker.use(
     http.post('/api/login', () => {
-      return HttpResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return HttpResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     })
-  );
+  )
 
-  const user = userEvent.setup();
-  render(<LoginForm />);
+  const screen = await render(<LoginForm />)
 
-  await user.type(screen.getByLabelText(/email/i), 'wrong@example.com');
-  await user.click(screen.getByRole('button', { name: /submit/i }));
+  await screen.getByLabelText(/email/i).fill('wrong@example.com')
+  await screen.getByRole('button', { name: /submit/i }).click()
 
-  await screen.findByText(/invalid credentials/i);
-});
+  await expect.element(screen.getByText(/invalid credentials/i)).toBeVisible()
+})
 ```
 
----
+### Testing Hooks with renderHook
 
-## Testing React Hooks
-
-### Custom Hooks with renderHook
-
-**Built into React Testing Library** (since v13):
+`renderHook()` is async and returns `act` alongside `result` — use that `act` for hook state updates:
 
 ```tsx
-import { renderHook } from '@testing-library/react';
+import { renderHook } from 'vitest-browser-react'
 
-it('should toggle value', () => {
-  const { result } = renderHook(() => useToggle(false));
+test('should toggle value', async () => {
+  const { result, act } = await renderHook(() => useToggle(false))
 
-  expect(result.current.value).toBe(false);
+  expect(result.current.value).toBe(false)
 
-  act(() => {
-    result.current.toggle();
-  });
+  await act(() => {
+    result.current.toggle()
+  })
 
-  expect(result.current.value).toBe(true);
-});
+  expect(result.current.value).toBe(true)
+})
 ```
 
-**Pattern:**
-- `result.current` - Current return value of hook
-- `act()` - Wrap state updates
-- `rerender()` - Re-run hook with new props
-
-### Hooks with Props
+### Testing Context Providers
 
 ```tsx
-it('should accept initial value', () => {
-  const { result, rerender } = renderHook(
-    ({ initialValue }) => useCounter(initialValue),
-    { initialProps: { initialValue: 10 } }
-  );
-
-  expect(result.current.count).toBe(10);
-
-  // Test with different initial value
-  rerender({ initialValue: 20 });
-  expect(result.current.count).toBe(20);
-});
-```
-
----
-
-## Testing Context
-
-### wrapper Option
-
-**For hooks that need context providers:**
-
-```tsx
-const { result } = renderHook(() => useAuth(), {
-  wrapper: ({ children }) => (
-    <AuthProvider>
-      {children}
+test('should show user menu when authenticated', async () => {
+  const screen = await render(
+    <AuthProvider initialUser={{ name: 'Alice', role: 'admin' }}>
+      <Dashboard />
     </AuthProvider>
+  )
+
+  await expect.element(screen.getByRole('button', { name: /user menu/i })).toBeVisible()
+})
+```
+
+For hooks that need context:
+```tsx
+const { result } = await renderHook(() => useAuth(), {
+  wrapper: ({ children }) => (
+    <AuthProvider>{children}</AuthProvider>
   ),
-});
-
-expect(result.current.user).toBeNull();
-
-act(() => {
-  result.current.login({ email: 'test@example.com' });
-});
-
-expect(result.current.user).toEqual({ email: 'test@example.com' });
+})
 ```
 
-### Multiple Providers
+### Testing Forms
 
 ```tsx
-const AllProviders = ({ children }) => (
-  <AuthProvider>
-    <ThemeProvider>
-      <RouterProvider>
-        {children}
-      </RouterProvider>
-    </ThemeProvider>
-  </AuthProvider>
-);
+test('should submit form with user input', async () => {
+  const handleSubmit = vi.fn()
+  const screen = await render(<RegistrationForm onSubmit={handleSubmit} />)
 
-const { result } = renderHook(() => useMyHook(), {
-  wrapper: AllProviders,
-});
-```
-
-### Testing Components with Context
-
-```tsx
-// ✅ CORRECT - Wrap component in provider
-const renderWithAuth = (ui, { user = null, ...options } = {}) => {
-  return render(
-    <AuthProvider initialUser={user}>
-      {ui}
-    </AuthProvider>,
-    options
-  );
-};
-
-it('should show user menu when authenticated', () => {
-  renderWithAuth(<Dashboard />, {
-    user: { name: 'Alice', role: 'admin' },
-  });
-
-  expect(screen.getByRole('button', { name: /user menu/i })).toBeInTheDocument();
-});
-```
-
----
-
-## Testing Forms
-
-### Controlled Inputs
-
-```tsx
-it('should update input value as user types', async () => {
-  const user = userEvent.setup();
-
-  render(<SearchInput />);
-
-  const input = screen.getByLabelText(/search/i);
-
-  await user.type(input, 'react');
-
-  expect(input).toHaveValue('react');
-});
-```
-
-### Form Submissions
-
-```tsx
-it('should submit form with user input', async () => {
-  const handleSubmit = vi.fn();
-  const user = userEvent.setup();
-
-  render(<RegistrationForm onSubmit={handleSubmit} />);
-
-  await user.type(screen.getByLabelText(/name/i), 'Alice');
-  await user.type(screen.getByLabelText(/email/i), 'alice@example.com');
-  await user.type(screen.getByLabelText(/password/i), 'password123');
-  await user.click(screen.getByRole('button', { name: /sign up/i }));
+  await screen.getByLabelText(/name/i).fill('Alice')
+  await screen.getByLabelText(/email/i).fill('alice@example.com')
+  await screen.getByLabelText(/password/i).fill('password123')
+  await screen.getByRole('button', { name: /sign up/i }).click()
 
   expect(handleSubmit).toHaveBeenCalledWith({
     name: 'Alice',
     email: 'alice@example.com',
     password: 'password123',
-  });
-});
-```
+  })
+})
 
-### Form Validation
-
-```tsx
-it('should show validation errors for invalid input', async () => {
-  const user = userEvent.setup();
-
-  render(<RegistrationForm />);
+test('should show validation errors for invalid input', async () => {
+  const screen = await render(<RegistrationForm />)
 
   // Submit empty form
-  await user.click(screen.getByRole('button', { name: /sign up/i }));
+  await screen.getByRole('button', { name: /sign up/i }).click()
 
   // Validation errors appear
-  expect(screen.getByText(/name is required/i)).toBeInTheDocument();
-  expect(screen.getByText(/email is required/i)).toBeInTheDocument();
-  expect(screen.getByText(/password is required/i)).toBeInTheDocument();
-});
+  await expect.element(screen.getByText(/name is required/i)).toBeVisible()
+  await expect.element(screen.getByText(/email is required/i)).toBeVisible()
+  await expect.element(screen.getByText(/password is required/i)).toBeVisible()
+})
 ```
+
+### Testing Loading States
+
+```tsx
+test('should show loading then data', async () => {
+  const screen = await render(<UserList />)
+
+  await expect.element(screen.getByText(/loading/i)).toBeVisible()
+
+  await expect.element(screen.getByText(/alice/i)).toBeVisible()
+  await expect.element(screen.getByText(/loading/i)).not.toBeInTheDocument()
+})
+```
+
+### Testing Error Boundaries
+
+```tsx
+test('should catch errors with error boundary', async () => {
+  // Suppress console.error noise for this test
+  const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+  const screen = await render(
+    <ErrorBoundary fallback={<div>Something went wrong</div>}>
+      <ThrowsError />
+    </ErrorBoundary>
+  )
+
+  await expect.element(screen.getByText(/something went wrong/i)).toBeVisible()
+
+  spy.mockRestore()
+})
+```
+
+### Testing Portals
+
+```tsx
+test('should render modal in portal', async () => {
+  const screen = await render(<Modal isOpen={true}>Modal content</Modal>)
+
+  // Portal renders outside the component root; query the page instead
+  await expect.element(page.getByText(/modal content/i)).toBeVisible()
+})
+```
+
+The returned `screen` is scoped to the rendered component — for portal content, use the document-wide `page` from `vitest/browser`.
+
+### Testing Suspense
+
+```tsx
+test('should show fallback then content', async () => {
+  const screen = await render(
+    <Suspense fallback={<div>Loading...</div>}>
+      <LazyComponent />
+    </Suspense>
+  )
+
+  await expect.element(screen.getByText(/loading/i)).toBeVisible()
+
+  await expect.element(screen.getByText(/lazy content/i)).toBeVisible()
+})
+```
+
+### React Server Components
+
+RSCs can't be tested in Browser Mode component tests — they execute on the server, not in the browser. Test them with e2e tests (Playwright against a running app) or unit tests of logic extracted from the component. Client components (`'use client'`) test normally with `vitest-browser-react`.
 
 ---
 
@@ -251,85 +246,21 @@ it('should show validation errors for invalid input', async () => {
 
 ### 1. Unnecessary act() wrapping
 
-❌ **WRONG - Manual act() everywhere**
+❌ **WRONG - Manual act() around renders and interactions**
 ```tsx
-act(() => {
-  render(<MyComponent />);
-});
-
 await act(async () => {
-  await user.click(button);
-});
+  await screen.getByRole('button').click()
+})
 ```
 
-✅ **CORRECT - RTL handles it**
+✅ **CORRECT - Locator events handle timing**
 ```tsx
-render(<MyComponent />);
-await user.click(button);
+await screen.getByRole('button').click()
 ```
 
-**Modern RTL auto-wraps:**
-- `render()`
-- `userEvent` methods
-- `fireEvent`
-- `waitFor`, `findBy`
+**When you DO need `act()`:** hook state updates via `renderHook` (use the `act` it returns). In `@testing-library/react`, RTL auto-wraps `render`/`userEvent`/`waitFor` — see `resources/testing-library-react-legacy.md`.
 
-**When you DO need manual `act()`:**
-- Custom hook state updates (`renderHook`)
-- Direct state mutations (rare, usually bad practice)
-
----
-
-### 2. Manual cleanup() calls
-
-❌ **WRONG - Manual cleanup**
-```tsx
-afterEach(() => {
-  cleanup(); // Automatic since RTL 9!
-});
-```
-
-✅ **CORRECT - No cleanup needed**
-```tsx
-// Cleanup happens automatically after each test
-```
-
----
-
-### 3. beforeEach render pattern
-
-❌ **WRONG - Shared render in beforeEach**
-```tsx
-let button;
-beforeEach(() => {
-  render(<MyComponent />);
-  button = screen.getByRole('button'); // Shared state across tests
-});
-
-it('test 1', () => {
-  // Uses shared button from beforeEach
-});
-```
-
-✅ **CORRECT - Factory function per test**
-```tsx
-const renderComponent = () => {
-  render(<MyComponent />);
-  return {
-    button: screen.getByRole('button'),
-  };
-};
-
-it('test 1', () => {
-  const { button } = renderComponent(); // Fresh state
-});
-```
-
-For factory patterns, see `testing` skill.
-
----
-
-### 4. Testing component internals
+### 2. Testing component internals
 
 ❌ **WRONG - Accessing component internals**
 ```tsx
@@ -340,13 +271,11 @@ expect(wrapper.instance().handleClick).toBeDefined(); // Internal method
 
 ✅ **CORRECT - Test rendered output**
 ```tsx
-render(<MyComponent />);
-expect(screen.getByRole('dialog')).toBeInTheDocument(); // What user sees
+const screen = await render(<MyComponent />)
+await expect.element(screen.getByRole('dialog')).toBeVisible() // What user sees
 ```
 
----
-
-### 5. Shallow rendering
+### 3. Shallow rendering
 
 ❌ **WRONG - Shallow rendering**
 ```tsx
@@ -356,86 +285,15 @@ const wrapper = shallow(<MyComponent />);
 
 ✅ **CORRECT - Full rendering**
 ```tsx
-render(<MyComponent />);
+await render(<MyComponent />)
 // Full component tree rendered - realistic test
 ```
 
 **Why:** Shallow rendering hides integration bugs between parent/child components.
 
----
+### 4. Shared renders and manual cleanup
 
-## Testing Loading States
-
-```tsx
-it('should show loading then data', async () => {
-  render(<UserList />);
-
-  // Initially loading
-  expect(screen.getByText(/loading/i)).toBeInTheDocument();
-
-  // Wait for data
-  await screen.findByText(/alice/i);
-
-  // Loading gone
-  expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
-});
-```
-
----
-
-## Testing Error Boundaries
-
-```tsx
-it('should catch errors with error boundary', () => {
-  // Suppress console.error for this test
-  const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-  render(
-    <ErrorBoundary fallback={<div>Something went wrong</div>}>
-      <ThrowsError />
-    </ErrorBoundary>
-  );
-
-  expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
-
-  spy.mockRestore();
-});
-```
-
----
-
-## Testing Portals
-
-```tsx
-it('should render modal in portal', () => {
-  render(<Modal isOpen={true}>Modal content</Modal>);
-
-  // Portal renders outside root, but Testing Library finds it
-  expect(screen.getByText(/modal content/i)).toBeInTheDocument();
-});
-```
-
-**Testing Library queries the entire document,** so portals work automatically.
-
----
-
-## Testing Suspense
-
-```tsx
-it('should show fallback then content', async () => {
-  render(
-    <Suspense fallback={<div>Loading...</div>}>
-      <LazyComponent />
-    </Suspense>
-  );
-
-  // Initially fallback
-  expect(screen.getByText(/loading/i)).toBeInTheDocument();
-
-  // Wait for component
-  await screen.findByText(/lazy content/i);
-});
-```
+The beforeEach-render and manual `cleanup()` anti-patterns apply to React exactly as to any UI test — see the `front-end-testing` skill (Core Anti-Patterns). Use a factory function per test; cleanup is automatic.
 
 ---
 
@@ -443,13 +301,19 @@ it('should show fallback then content', async () => {
 
 React-specific checks:
 
-- [ ] Using `render()` from @testing-library/react (not enzyme's shallow/mount)
-- [ ] Using `renderHook()` for custom hooks
+- [ ] **Preferred**: Using `vitest-browser-react` with Vitest Browser Mode (real browser)
+- [ ] **Fallback**: Using `@testing-library/react` if Browser Mode not yet configured (see `resources/testing-library-react-legacy.md`)
+- [ ] All Playwright/Browser Mode tests are idempotent (no shared state between tests)
+- [ ] `render()`/`renderHook()` awaited (they are async in vitest-browser-react)
+- [ ] Using `renderHook()` for custom hooks, with its returned `act` for state updates
 - [ ] Using `wrapper` option for context providers
-- [ ] No manual `act()` calls (RTL handles it)
+- [ ] No manual `act()` around renders or locator interactions
 - [ ] No manual `cleanup()` calls (automatic)
+- [ ] MSW via `setupWorker`/`worker.use()` in Browser Mode (not `setupServer`)
 - [ ] Testing component output, not internal state
 - [ ] Using factory functions, not `beforeEach` render
+- [ ] Using `expect.element()` for auto-retrying assertions (Browser Mode)
+- [ ] RSCs tested via e2e or extracted logic, not Browser Mode component tests
 - [ ] Following TDD workflow (see `tdd` skill)
-- [ ] Using general DOM testing patterns (see `front-end-testing` skill)
+- [ ] Using general UI testing patterns (see `front-end-testing` skill)
 - [ ] Using test factories for data (see `testing` skill)
