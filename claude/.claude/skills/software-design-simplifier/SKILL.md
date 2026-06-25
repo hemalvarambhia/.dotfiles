@@ -28,7 +28,7 @@ This defines the relatedness of a component of module/component. Similarly,
 > cohere when you put them together, and matched, well-machined parts sometimes seem to cohere because the fit is so precise. 
 > Adhesion is one thing sticking to another; cohesion is a mutual relationship, with two things sticking together.
 
-[Cohesion. Glenn Vanderberg](https://vanderburg.org/blog/2011/01/31/cohesion.html)
+[Cohesion, Glenn Vanderberg (2011)](https://vanderburg.org/blog/2011/01/31/cohesion.html)
 
 The Single Responsibility Principle (SRP) is related to cohesion. Robert C. Martin defines the 
 > Gather together those things that change for the same reason and separate those things that change for different reasons.
