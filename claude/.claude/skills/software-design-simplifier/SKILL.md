@@ -40,3 +40,8 @@ by Robert C Martin applies here.
 According to Alistair Cockburn, this concept refers to how much communication or 
 how much communication or how much dependency is required between to modules (classes, function, packages).
 Poorly encapsulated objects tend to end up being tightly coupled to their clients.
+
+## Rules
+
+1. "Not my job" - related to cohesion and the SRP;
+2. "No need to know" - relates to YAGNI (You aren't gonna needed it)
