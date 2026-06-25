@@ -2,6 +2,7 @@
 name: software-design-bureaucrat
 description: >
   Collaborative object oriented design using the ideas of Responsibility-Driven Design with a bureaucratic twist.
+  Use when a developer wants to analyse the design of a class or method.
 disable-model-invocation: true
 allowed-tools:
   - Read
