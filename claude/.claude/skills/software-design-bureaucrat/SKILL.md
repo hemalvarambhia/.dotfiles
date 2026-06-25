@@ -40,7 +40,8 @@ by Robert C Martin applies here.
 
 According to Alistair Cockburn, this concept refers to how much communication or 
 how much communication or how much dependency is required between to modules (classes, function, packages).
-Poorly encapsulated objects tend to end up being tightly coupled to their clients.
+Poorly encapsulated objects tend to end up being tightly coupled to their clients. What is wanted is loose
+coupling between objects.
 
 ## Rules
 Alistair Cockburn articulated two rules for simplifying (object-oriented) software designs:
