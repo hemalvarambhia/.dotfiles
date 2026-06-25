@@ -42,6 +42,7 @@ how much communication or how much dependency is required between to modules (cl
 Poorly encapsulated objects tend to end up being tightly coupled to their clients.
 
 ## Rules
-
+These are the rules for simplifying software design articulated by Alistair Cockburn (2025):
 1. "Not my job" - related to cohesion and the SRP;
-2. "No need to know" - relates to YAGNI (You aren't gonna needed it)
+2. "No need to know" - related to YAGNI (You aren't gonna needed it) and minimises the Speculative Generality code smell, 
+keeping a tight lid on how much information the object holds.
