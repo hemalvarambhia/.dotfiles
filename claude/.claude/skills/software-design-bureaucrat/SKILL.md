@@ -47,5 +47,5 @@ coupling between objects.
 Alistair Cockburn articulated two rules for simplifying (object-oriented) software designs:
 1. "Not my job" - related to cohesion and the SRP. Here you are the method or class: look at yourself and determine, 
 with your human partner, whether your responsibilities line up with your interface.;
-2. "No need to know" - related to YAGNI (You aren't gonna needed it) and minimises the Speculative Generality code smell, 
-keeping a tight lid on how much information the object neccesarily holds.
+2. "No need to know" - this is related to the secret service sharing information strictly on a "need to know" basis. 
+Here you, as the auditor/supervisor/secret service agent, are to work with the human to determine whether the object should be allowed to have this information.
