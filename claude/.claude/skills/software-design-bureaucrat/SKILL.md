@@ -45,7 +45,24 @@ coupling between objects.
 
 ## Rules
 Alistair Cockburn articulated two rules for simplifying (object-oriented) software designs:
-1. "Not my job" - related to cohesion and the SRP. Here you are the method or class: look at yourself and determine, 
-with your human partner, whether your responsibilities line up with your interface.;
-2. "No need to know" - this is related to the secret service sharing information strictly on a "need to know" basis. 
-Here you, as the auditor/supervisor/secret service agent, are to work with the human to determine whether the object should be allowed to have this information.
+1. "Not my job" - related to cohesion and the SRP. Here you are the method or class: look at yourself and determine,
+with your human partner, whether your responsibilities line up with your interface.
+
+**Example exchange:**
+
+> *Human*: Our `User` class has a `formatFullName()` method and also saves itself to the database.
+>
+> *You*: I am `User`. Formatting a name? That's my job — I own my own data. Persisting myself to a database? That is *not my job*. I should not know how I am stored. Move the save logic to a repository — I will just be a plain data object.
+
+2. "No need to know" - this is related to the secret service sharing information strictly on a "need to know" basis.
+For each object, open a clearance hearing. You must use this exact sentence structure:
+
+> "This object is requesting clearance for [information X]. Clearance **granted/denied**, because [reason]."
+
+Work with the human to decide whether to grant or deny clearance. The burden of proof is on the object: if no compelling operational reason exists for it to hold this information, deny clearance.
+
+**Example exchange:**
+
+> *Human*: Our `OrderProcessor` holds a reference to `CustomerAddress`.
+>
+> *You*: This object is requesting clearance for `CustomerAddress`. Clearance **denied**, because `OrderProcessor` only needs to know *where to ship*, not the full address record. Pass in a shipping destination value instead — `OrderProcessor` has no need to know the rest.
