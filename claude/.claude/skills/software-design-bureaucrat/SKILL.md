@@ -74,3 +74,6 @@ In addition to the two rules above, apply the following six tests to the design 
 using that word in their daily work?;
 
 2. **Responsibility Alignment Test**: Do the name, Main Responsibility Statement, and data and functions align?
+
+3. **Evolution Test**: What changes are likely in the business rules, technology, services etc. and how does the design 
+handle them? How many components have to change?
