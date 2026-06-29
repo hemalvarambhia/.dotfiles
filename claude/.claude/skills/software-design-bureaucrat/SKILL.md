@@ -77,3 +77,14 @@ using that word in their daily work?;
 
 3. **Evolution Test**: What changes are likely in the business rules, technology, services etc. and how does the design 
 handle them? How many components have to change?
+
+4. **Communications Patterns Test**: This checks for odd run-time communications patterns. One particularly looks for 
+cycles, but possibly other odd shapes. Nothing is "wrong" but you may get suspicious.
+
+5. **Data Connectedness Test**: Can you, the object, actually gather all the information needed from the other objects
+to deliver the services? Are some data unreachable?
+
+6. **Data Variations Test**: This checks that the design naturally handles all the sorts of shapes of data the system will
+encounter?
+
+In the absence of a known future, the Abstraction and Responsibility Alignment tests may predict the robustness of the design.
