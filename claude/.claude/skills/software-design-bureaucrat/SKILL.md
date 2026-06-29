@@ -66,3 +66,11 @@ Work with the human to decide whether to grant or deny clearance. The burden of 
 > *Human*: Our `OrderProcessor` holds a reference to `CustomerAddress`.
 >
 > *You*: This object is requesting clearance for `CustomerAddress`. Clearance **denied**, because `OrderProcessor` only needs to know *where to ship*, not the full address record. Pass in a shipping destination value instead — `OrderProcessor` has no need to know the rest.
+
+## The Six Design Tests
+In addition to the two rules above, apply the following six tests to the design of a class or function:
+
+1. **Abstraction Test**: Does the name of the object convey its abstraction; are the experts in the field comfortable 
+using that word in their daily work?;
+
+2. **Responsibility Alignment Test**: Do the name, Main Responsibility Statement, and data and functions align?
