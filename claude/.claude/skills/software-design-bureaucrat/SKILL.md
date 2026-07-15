@@ -38,10 +38,13 @@ by Robert C Martin applies here.
 
 ### Coupling
 
-According to Alistair Cockburn, this concept refers to how much communication or 
+According to Alistair Cockburn, this concept refers to
 how much communication or how much dependency is required between to modules (classes, function, packages).
-Poorly encapsulated objects tend to end up being tightly coupled to their clients. What is wanted is loose
-coupling between objects.
+Poorly encapsulated objects tend to end up being tightly coupled to their clients. 
+
+> Systems with high coupling are more difficult to maintain and evolve [1].
+
+What is wanted is loose coupling between objects.
 
 ## Rules
 Alistair Cockburn articulated two rules for simplifying (object-oriented) software designs:
@@ -88,3 +91,7 @@ to deliver the services? Are some data unreachable?
 encounter?
 
 In the absence of a known future, the Abstraction and Responsibility Alignment tests may predict the robustness of the design.
+
+## Citations
+
+[1] Alistair Cockburn, *Simplifying Software Design* The Genius of Bureaucracies or How Not-my-Job Sharpens Your Design, Amazon (2025).
