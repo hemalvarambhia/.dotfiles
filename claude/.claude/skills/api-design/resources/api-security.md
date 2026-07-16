@@ -122,7 +122,7 @@ Checklist:
 - Disable stack traces in production error responses
 - Remove `X-Powered-By` and other server identification headers
 - Configure CORS restrictively — don't use `Access-Control-Allow-Origin: *` for authenticated APIs
-- Disable HTTP methods you don't use (OPTIONS, TRACE)
+- Disable HTTP methods you don't use (e.g. TRACE — but keep OPTIONS if you serve cross-origin browser clients; CORS preflight requires it)
 
 ### 9. Improper Inventory Management
 
@@ -130,7 +130,7 @@ Forgotten old API versions still running, undocumented endpoints, debug endpoint
 
 Mitigations:
 - Maintain an API inventory (OpenAPI spec as source of truth)
-- Decommission old versions on schedule (see `resources/api-evolution.md`)
+- Decommission old versions on schedule (see `api-evolution.md`)
 - Review deployed endpoints regularly — remove anything not in the spec
 - Never deploy debug/test endpoints to production
 
@@ -162,17 +162,13 @@ Simple, good for server-to-server communication.
 - Support key rotation without downtime (accept old and new keys during transition)
 - Prefix keys by environment (`sk_live_`, `sk_test_`) to prevent accidental cross-environment use
 
-### OAuth 2.0 + PKCE
+### OAuth 2.0 and OpenID Connect
 
-Standard for delegated authorization. Use **Authorization Code flow with PKCE** for ALL client types (web apps, native apps, SPAs). The Implicit grant and Resource Owner Password Credentials grant are deprecated.
+OAuth delegates access; OpenID Connect adds authentication. Select a grant and identity profile from the actual goal, client type, user-agent context, issuer/resource topology, and provider capabilities—authorization code is not the answer to machine, device, or token-exchange use cases.
 
-Key rules:
-- PKCE with S256 is mandatory for public clients, recommended for confidential clients
-- Exact redirect URI matching only -- no patterns, no wildcards
-- Never pass tokens in URI query parameters
-- Sender-constrain tokens via DPoP or mTLS when feasible
+For redirect-based authorization-code flows, RFC 9700 requires PKCE for public clients and recommends it for confidential clients; use `S256`. It also requires exact redirect matching, forbids the resource-owner-password grant, and forbids clients from placing access tokens in URI query parameters. Responses that issue access tokens at the authorization endpoint SHOULD NOT be used unless every named injection and leakage vector is mitigated.
 
-See `auth-security.md` for the full deep-dive on OAuth 2.0 security (RFC 9700 / BCP 240), including PKCE enforcement, redirect validation, CSRF defense, mix-up attacks, and clickjacking prevention.
+Load the `secure-oauth-oidc` skill before designing or reviewing an OAuth/OIDC flow. It provides the full RFC 9700 / BCP 240 and OIDC workflow, including applicability-aware controls, issuer and transaction binding, attack analysis, and negative tests. Use `auth-security.md` for JWT BCP guidance.
 
 ### JWT Considerations
 

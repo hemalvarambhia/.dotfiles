@@ -1,6 +1,65 @@
 # Architectural Skill References
 
-Authoritative sources used to develop the DDD and hexagonal architecture skills. Each entry documents what was taken from the source and where it appears in our skills.
+Authoritative sources used to develop the module-design, architecture-improvement, system-reduction, technology-selection, DDD, hexagonal architecture, and event-sourcing skills. Each entry documents what was taken from the source and where it appears in our skills.
+
+---
+
+## Module Design and Architecture Improvement
+
+### Matt Pocock — [`codebase-design`](https://github.com/mattpocock/skills/tree/66898f60e8c744e269f8ce06c2b2b99ce7660d5f/skills/engineering/codebase-design) and [`improve-codebase-architecture`](https://github.com/mattpocock/skills/tree/66898f60e8c744e269f8ce06c2b2b99ce7660d5f/skills/engineering/improve-codebase-architecture) (pinned commit `66898f60`, MIT)
+
+- **Deep modules, interface burden, information hiding, locality, leverage, deepening, and Design It Twice** → `codebase-design/SKILL.md`, `references/deepening.md`, and `references/design-it-twice.md`
+- **Evidence-led repository exploration, ranked architecture candidates, before/after visuals, and a top recommendation** → `improve-codebase-architecture/SKILL.md`
+- **HTML architecture report as a first-class deliverable** → `improve-codebase-architecture/references/html-report.md`
+- **Adapted agent metadata** → [`codebase-design/agents/openai.yaml`](https://github.com/mattpocock/skills/blob/66898f60e8c744e269f8ce06c2b2b99ce7660d5f/skills/engineering/codebase-design/agents/openai.yaml) and [`improve-codebase-architecture/agents/openai.yaml`](https://github.com/mattpocock/skills/blob/66898f60e8c744e269f8ce06c2b2b99ce7660d5f/skills/engineering/improve-codebase-architecture/agents/openai.yaml)
+- **Local adaptation** → retains established API/component/service/boundary vocabulary; restores Feathers' seam/enabling-point definition; treats adapters, test seams, and small functions as contextual rather than numeric rules; balances consolidation with cohesion, ownership, runtime, trust, and failure boundaries; makes HTML output offline and script-free by default
+- **License and exact file-level provenance** → each adapted skill's `LICENSE` and `references/source-notes.md`
+
+### John Ousterhout — [*A Philosophy of Software Design*](https://web.stanford.edu/~ouster/cgi-bin/book.php) and [Stanford modular-design notes](https://web.stanford.edu/~ouster/cgi-bin/cs190-winter18/lecture.php?topic=modularDesign)
+
+- **Deep modules and information hiding** → `codebase-design`: complete useful behavior behind a smaller caller-facing contract
+- **Complexity as dependencies and obscurity** → both skills: measure what callers and maintainers must know, not file or method length
+- **Design It Twice** → `codebase-design/references/design-it-twice.md`: compare materially different interfaces before an expensive-to-reverse decision
+
+Michael Feathers' seam and enabling-point terminology remains authoritative for both module-design/architecture skills; see the legacy-code sources later in this document and `finding-seams` for the dependency-breaking workflow.
+
+---
+
+## System Complexity Reduction
+
+### Adam Bulmer (`mintuz`) — [`reducer/SKILL.md`](https://github.com/mintuz/skills/blob/d698a88fc1e4d054a25e5919f15658f673f602cb/plugins/core/skills/reducer/SKILL.md) and [`agents/openai.yaml`](https://github.com/mintuz/skills/blob/d698a88fc1e4d054a25e5919f15658f673f602cb/plugins/core/skills/reducer/agents/openai.yaml) (pinned commit `d698a88f`, MIT)
+
+- **Conserve behavior; minimize mechanism** → `reduce-system-complexity/SKILL.md`
+- **Behavior/non-functional guarantee ledger and explicit evidence gaps** → workflow step 1 and `references/ledger-template.md`
+- **Whole-mechanism baseline across control, state/time, structure, variability, and operations** → workflow step 2
+- **First-principles minimum, subtraction order, and prohibition on relocating complexity** → workflow step 3
+- **Separate behavior and mechanism gates with same-scope before/after evidence** → workflow step 6
+- **Local adaptation** → renamed to avoid functional/Redux reducer ambiguity; narrowed to an already-selected path; distinguishes contracts, reliance, intent, bugs, and obsolete internals; replaces proof and numeric-ranking language with calibrated qualitative evidence; adds mutation, provider-fidelity, privacy, migration, recovery, implementation-authority, and dirty-worktree safeguards
+- **License and exact provenance** → `reduce-system-complexity/LICENSE` and `references/source-notes.md`, including the [complete upstream license](https://github.com/mintuz/skills/blob/d698a88fc1e4d054a25e5919f15658f673f602cb/LICENSE) and [introduction commit](https://github.com/mintuz/skills/commit/1a433a5170560df40b0b9493a9cdb389958d0777)
+
+---
+
+## Existing-Solution Evaluation
+
+### Titus Winters, Tom Manshreck, and Hyrum Wright — [*Software Engineering at Google*, Chapter 21: Dependency Management](https://abseil.io/resources/swe-book/html/ch21.html)
+
+- **Reuse when an external dependency actually satisfies the task, while accounting for ongoing compatibility, maintenance, security, and support cost** → `evaluate-existing-solutions/SKILL.md`
+- **A dependency as an ongoing provider/consumer contract; tests and CI as stronger compatibility evidence than version-number assumptions** → `references/evidence-and-currentness.md`
+
+### UK Government Digital Service — [Managing software dependencies](https://www.gov.uk/service-manual/technology/managing-software-dependencies) and [Technology Code of Practice](https://www.gov.uk/data-ethics-guidance/the-technology-code-of-practice)
+
+- **Reuse across open-source, commercial, and internal software can save delivery time, while every dependency must remain current, tested, secured, and actively managed** → local-first candidate search and total-ownership comparison
+- **Technology selection spans design, build, buy, migration, procurement, and full lifecycle** → hard gates, ownership, exit strategy, and re-evaluation triggers
+
+### NIST — [Secure Software Development Framework, SP 800-218](https://csrc.nist.gov/pubs/sp/800/218/final)
+
+- **Third-party and supplier security as part of secure development and acquisition** → security/privacy/supply-chain gates and current primary evidence requirements
+
+### Open Source Security Foundation — [OpenSSF Scorecard](https://openssf.org/scorecard/)
+
+- **Automated open-source security-health checks as one use-case-specific signal** → explicitly retained as input, never a universal trust verdict or aggregate decision score
+
+The full method/evidence map lives in `evaluate-existing-solutions/references/evidence-and-currentness.md`. Real decisions must add current, candidate-specific primary sources.
 
 ---
 
@@ -112,6 +171,60 @@ Authoritative sources used to develop the DDD and hexagonal architecture skills.
 
 ---
 
+## Event Sourcing
+
+Sources behind the `event-sourcing` skill. Several foundational names (Chassaing's Decider, Greg Young on the left-fold model, Wlaschin, Khorikov) also appear under Domain-Driven Design above — this section records their event-sourcing-specific use plus the sources unique to the skill.
+
+### Martin Fowler — ["Event Sourcing"](https://martinfowler.com/eaaDev/EventSourcing.html) (2005) + ["What do you mean by Event-Driven?"](https://martinfowler.com/articles/201701-event-driven.html) (2017)
+- **Canonical definition** ("capture all changes to application state as a sequence of events") and rebuild-by-replay → ES skill: "Core Mental Model"
+- **Replay vs external systems** hazard, and "don't go down this path unless you really need to" → ES skill: "When to Use" + `resources/production-concerns.md`
+- **The four "event-driven" patterns** (notification, event-carried state transfer, event sourcing, CQRS) → ES skill: "Event Sourcing Is Not…" in `resources/when-to-use-event-sourcing.md`
+
+### Greg Young — [CQRS Documents (2010)](https://cqrs.files.wordpress.com/2010/11/cqrs_documents.pdf), "Functional Domain Models and Event Sourcing" (2012), [*Versioning in an Event Sourced System*](https://leanpub.com/esversioning) (2017)
+- **"Current State is a Left Fold of previous behaviours"** and "a snapshot is a memoization of your left fold" → ES skill: "Core Mental Model", `resources/decider-and-rehydration.md`, `resources/production-concerns.md`
+- **Past-tense event naming, append-only, no-delete/reversal transactions, optimistic concurrency** → ES skill: "Events as Data", `resources/modelling-events.md`, `resources/event-store.md`
+- **Versioning playbook** — immutability, weak schema, upcasting, copy-transform, no renames, no semantic changes → `resources/event-versioning.md`
+- **"The largest failure … is that they try to use it everywhere"** → `resources/when-to-use-event-sourcing.md`
+
+### Jérémie Chassaing — ["Functional Event Sourcing Decider"](https://thinkbeforecoding.com/post/2021/12/17/functional-event-sourcing-decider) (2021) + [DDD Europe 2023 Deciders](https://codeberg.org/thinkbeforecoding/dddeu-2023-deciders)
+- **The Decider** (`decide`/`evolve`/`initialState`/`isTerminal`) and rehydration as `List.fold evolve state events` → ES skill: "The Decider Is the Write Model" + `resources/decider-and-rehydration.md`
+- **Decider composition** (`compose`, `adapt`, `many`) → `resources/decider-and-rehydration.md` (advanced)
+
+### Scott Wlaschin — [*Domain Modeling Made Functional*](https://pragprog.com/titles/swdddf/domain-modeling-made-functional/) (2018)
+- **Workflow = `Command → Result<Event list, Error>`** (errors as values) → ES skill: `Decision` result type in `resources/decider-and-rehydration.md`
+
+### Alberto Brandolini — [EventStorming](https://www.eventstorming.com/) + *Introducing EventStorming* + [DDD Crew glossary cheat sheet](https://github.com/ddd-crew/eventstorming-glossary-cheat-sheet)
+- **The workshop, three levels, colour grammar, the command→aggregate→event→policy loop, pivotal events** → `resources/modelling-events.md`
+
+### Mathias Verraes — [verraes.net](https://verraes.net/) — "Patterns for Decoupling in Distributed Systems" (2019) + "Crypto-Shredding" (2019)
+- **Fat Event, Summary Event, Segregated Event Layers** (internal vs external events) → `resources/modelling-events.md`
+- **Crypto-shredding** ("delete the encryption key instead") and the "encrypted personal data is still personal data" legal caveat → `resources/production-concerns.md` GDPR section
+
+### Oskar Dudycz — [event-driven.io](https://event-driven.io/) + [Emmett](https://event-driven-io.github.io/emmett/)
+- **Emmett** `Decider<State, Command, Event>` (the TS generic order we adopt), `CommandHandler`, projections; pre-1.0 / unresolved-licence caveat → ES skill + `resources/event-store.md`
+- **Anti-patterns** (State Obsession, Clickbait, Passive-Aggressive events); command-vs-event ("commands can be rejected … events can only be ignored") → `resources/modelling-events.md`
+- **Internal vs external events / event-driven API** → `resources/modelling-events.md`
+- **Snapshots** ("the need to use snapshots may hint to the model's design flaw"), **short streams / closing the books**, **optimistic concurrency**, **outbox & delivery guarantees**, **GDPR** → `resources/production-concerns.md`, `resources/projections-and-read-models.md`
+- **Event streaming ≠ event sourcing**, **versioning ("prevent conditions in which versioning is needed")** → `resources/when-to-use-event-sourcing.md`, `resources/event-versioning.md`
+
+### Storage and tooling
+- **Kasey Speakman — ["Event Storage in Postgres"](https://dev.to/kspeakman/event-storage-in-postgres-4dk2) (2018)** — the `event` table with `UNIQUE (stream_id, version)` as the optimistic-concurrency mechanism → `resources/event-store.md`
+- **Eventide — [message-db](https://github.com/message-db/message-db)** — Postgres `messages` schema + `write_message` with `expected_version` → `resources/event-store.md`
+- **Kurrent / EventStoreDB — [kurrent.io](https://www.kurrent.io/)** — event-store capability list; catch-up vs persistent subscriptions; Node client rebrand → `resources/event-store.md`, `resources/projections-and-read-models.md`
+- **Marten — [martendb.io](https://martendb.io/events/)** (.NET, reference design) — projections (inline/live/async), rebuilds, upcaster API → `resources/projections-and-read-models.md`, `resources/event-versioning.md`
+- **Robert Pankowecki (Arkency), quoting Greg Young — ["Correlation id and causation id in evented systems"](https://blog.arkency.com/correlation-id-and-causation-id-in-evented-systems/) (2018)** — the correlation/causation copy rule → `resources/event-store.md`
+
+### Production and operability
+- **Tyler Treat — ["You Cannot Have Exactly-Once Delivery"](https://bravenewgeek.com/you-cannot-have-exactly-once-delivery/) (2015)** — at-least-once + idempotency; exactly-once delivery is a myth → `resources/production-concerns.md`
+- **Ben Smith — ["Dealing with eventual consistency in a CQRS/ES application"](https://10consulting.com/2017/10/06/dealing-with-eventual-consistency/) (2017)** — read-your-writes / POST-redirect-GET-404 and mitigations → `resources/projections-and-read-models.md`
+- **Michiel Rook — ["Forget me please? Event sourcing and the GDPR"](https://www.michielrook.nl/2017/11/forget-me-please-event-sourcing-gdpr/) (2017)** — immutability vs right-to-erasure; key forgetting → `resources/production-concerns.md`
+- **Savvas Kleanthous — ["Event immutability and dealing with change"](https://www.kurrent.io/blog/event-immutability-and-dealing-with-change) (2021)** — compensating/reversal events; don't delete → `resources/production-concerns.md`
+- **Oliver Libutzki — ["Why Event Sourcing is a microservice communication anti-pattern"](https://dev.to/olibutzki/why-event-sourcing-is-a-microservice-anti-pattern-3mcj) (2019)** — don't expose the store as an integration bus ("your persistence becomes your public API") → `resources/modelling-events.md`, `resources/production-concerns.md`
+- **Chris Richardson — [microservices.io Event Sourcing](https://microservices.io/patterns/data/event-sourcing.html)** — minimal store, benefits/drawbacks → `resources/when-to-use-event-sourcing.md`
+- **Ben Stopford / Confluent — ["Event Sourcing vs Event Streaming"](https://developer.confluent.io/courses/event-sourcing/event-sourcing-vs-event-streaming/)** and **Kislay Verma — ["Domain Events versus Change Data Capture"](https://kislayverma.com/software-architecture/domain-events-versus-change-data-capture/)** — ES vs streaming vs CDC distinctions → `resources/when-to-use-event-sourcing.md`
+
+---
+
 ## API and Interface Design
 
 ### Addy Osmani — [agent-skills/api-and-interface-design](https://github.com/addyosmani/agent-skills/blob/main/skills/api-and-interface-design/SKILL.md)
@@ -192,13 +305,6 @@ Authoritative sources used to develop the DDD and hexagonal architecture skills.
 - **Input sanitization** — kid as injection vector, jku/x5u as SSRF vector → `resources/auth-security.md`: "Input Sanitization"
 - **Compression oracle** — don't compress before encryption → `resources/auth-security.md`: "Encoding and Compression"
 
-### RFC 9700 (BCP 240) — [OAuth 2.0 Security Best Current Practice](https://www.rfc-editor.org/rfc/rfc9700) (2025, IETF)
-- **Grant type selection** — Authorization Code + PKCE for all clients, no Implicit or ROPC → `resources/auth-security.md`: "Grant Type Selection"
-- **PKCE enforcement** — mandatory for public clients, recommended for all → `resources/auth-security.md`: "PKCE"
-- **Redirect URI validation** — exact string matching only → `resources/auth-security.md`: "Redirect URI Validation"
-- **Token handling** — sender-constraining, audience restriction, no query params → `resources/auth-security.md`: "Token Handling"
-- **CSRF defense** → `resources/auth-security.md`: "CSRF Defense"
-
 ### RFC 9325 (BCP 195) — [TLS Recommendations](https://www.rfc-editor.org/rfc/rfc9325) (2022, IETF) + RFC 8996 — [Deprecating TLS 1.0/1.1](https://www.rfc-editor.org/rfc/rfc8996) (2021)
 - **TLS 1.2 minimum, TLS 1.3 preferred** → `resources/api-security.md`: "Transport Security"
 
@@ -207,6 +313,44 @@ Authoritative sources used to develop the DDD and hexagonal architecture skills.
 
 ### RFC 6302 (BCP 162) — [Logging Recommendations for Internet-Facing Servers](https://www.rfc-editor.org/rfc/rfc6302) (2011, IETF)
 - **What to log for internet-facing servers** — source/destination addresses and ports, timestamps, transport protocol → Twelve-factor skill: Factor XI (Logs)
+
+---
+
+## Secure OAuth and OpenID Connect
+
+These primary sources support `secure-oauth-oidc/SKILL.md` and its five files under `secure-oauth-oidc/references/`. The skill treats RFC 9700 as the baseline, then layers on only the specifications and profiles that apply to the deployment.
+
+### Security baseline and protocol foundations
+
+- **RFC 9700 / BCP 240 — [Best Current Practice for OAuth 2.0 Security](https://www.rfc-editor.org/rfc/rfc9700) (2025, IETF)** — normative control strengths, attack model, redirect and code protections, refresh-token replay detection, mix-up defense, browser/deployment guidance, and deprecated modes → `rfc9700-control-catalog.md`, `attack-and-test-catalog.md`
+- **RFC 6749 — [The OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749) (2012, IETF)** and **RFC 6750 — [Bearer Token Usage](https://www.rfc-editor.org/rfc/rfc6750) (2012, IETF)** — base roles, grants, endpoint semantics, token transport, and error contracts; read with RFC 9700's updates → `standards-map.md`
+- **RFC 7636 — [Proof Key for Code Exchange](https://www.rfc-editor.org/rfc/rfc7636) (2015, IETF)** — verifier/challenge syntax and token-endpoint verification → `rfc9700-control-catalog.md`
+- **RFC 8252 / BCP 212 — [OAuth 2.0 for Native Apps](https://www.rfc-editor.org/rfc/rfc8252) (2017, IETF)** — external user agents, claimed HTTPS/app links, custom schemes, and the narrow loopback redirect exception → `standards-map.md`
+- **OpenID Connect Core 1.0 incorporating errata set 2 — [Core](https://openid.net/specs/openid-connect-core-1_0.html) (2023, OpenID Foundation)** — authentication request/response semantics, ID Token validation, subject identity, UserInfo binding, nonce, and flow-specific hashes → `oidc-validation.md`
+- **OpenID Connect Discovery 1.0 incorporating errata set 2 — [Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html) (2023, OpenID Foundation)** — issuer discovery, provider metadata, and issuer equality checks → `oidc-validation.md`
+- **OpenID Connect Dynamic Client Registration 1.0 incorporating errata set 2 — [Registration](https://openid.net/specs/openid-connect-registration-1_0.html) (2023, OpenID Foundation)** — OIDC-specific redirect, response/grant, subject type, JOSE algorithm, request object, and sector-identifier metadata → `standards-map.md`
+- **OpenID Connect logout/session family — [RP-Initiated Logout](https://openid.net/specs/openid-connect-rpinitiated-1_0.html), [Front-Channel Logout](https://openid.net/specs/openid-connect-frontchannel-1_0.html), [Back-Channel Logout](https://openid.net/specs/openid-connect-backchannel-1_0.html), and [Session Management](https://openid.net/specs/openid-connect-session-1_0.html) (OpenID Foundation)** — mechanism-specific issuer, audience, browser, session, token-hint, callback, and replay requirements; keeps local logout, OP session termination, and token revocation distinct → `standards-map.md`, `oidc-validation.md`
+
+### Metadata, issuer binding, and token restriction
+
+- **RFC 8414 — [OAuth 2.0 Authorization Server Metadata](https://www.rfc-editor.org/rfc/rfc8414) (2018, IETF)** and **RFC 9728 — [OAuth 2.0 Protected Resource Metadata](https://www.rfc-editor.org/rfc/rfc9728) (2025, IETF)** — trusted endpoint/capability discovery and protected-resource metadata → `standards-map.md`
+- **RFC 7591 — [OAuth 2.0 Dynamic Client Registration](https://www.rfc-editor.org/rfc/rfc7591) (2015, IETF)** and **RFC 7592 — [Dynamic Client Registration Management](https://www.rfc-editor.org/rfc/rfc7592) (2015, Experimental)** — registration metadata, endpoint authorization, registration access tokens, client lifecycle, and attacker-controlled URI/metadata boundaries → `standards-map.md`
+- **RFC 9207 — [OAuth 2.0 Authorization Server Issuer Identification](https://www.rfc-editor.org/rfc/rfc9207) (2022, IETF)** — authorization-response issuer binding for mix-up resistance → `oidc-validation.md`, `rfc9700-control-catalog.md`
+- **RFC 8707 — [Resource Indicators for OAuth 2.0](https://www.rfc-editor.org/rfc/rfc8707) (2020, IETF)** — explicit resource selection and audience restriction → `standards-map.md`
+- **RFC 8705 — [OAuth 2.0 Mutual-TLS Client Authentication and Certificate-Bound Access Tokens](https://www.rfc-editor.org/rfc/rfc8705) (2020, IETF)** and **RFC 9449 — [OAuth 2.0 Demonstrating Proof of Possession](https://www.rfc-editor.org/rfc/rfc9449) (2023, IETF)** — sender-constrained tokens, proof/key binding, and replay boundaries → `standards-map.md`, `attack-and-test-catalog.md`
+- **RFC 9068 — [JWT Profile for OAuth 2.0 Access Tokens](https://www.rfc-editor.org/rfc/rfc9068) (2021, IETF)** and **RFC 8725 / BCP 225 — [JSON Web Token Best Current Practices](https://www.rfc-editor.org/rfc/rfc8725) (2020, IETF)** — profiled JWT access-token validation and cross-JWT confusion defenses → `standards-map.md`
+
+### Hardened authorization and regulated profiles
+
+- **RFC 9101 — [JWT-Secured Authorization Request](https://www.rfc-editor.org/rfc/rfc9101) (2021, IETF)** and **RFC 9126 — [Pushed Authorization Requests](https://www.rfc-editor.org/rfc/rfc9126) (2021, IETF)** — integrity-protected and back-channel authorization requests → `standards-map.md`
+- **JWT Secured Authorization Response Mode for OAuth 2.0 — [JARM Final](https://openid.net/specs/oauth-v2-jarm-final.html) (2022, OpenID Foundation)** — signed/encrypted authorization responses and their distinct validation contract → `oidc-validation.md`, `standards-map.md`
+- **FAPI 2.0 Security Profile — [Final specification](https://openid.net/specs/fapi-security-profile-2_0-final.html) (2025, OpenID Foundation)** — a stricter interoperable profile for high-value APIs; its added requirements supplement rather than replace RFC 9700 → `standards-map.md`
+- **RFC 9396 — [Rich Authorization Requests](https://www.rfc-editor.org/rfc/rfc9396) (2023, IETF)** — structured authorization details and privilege validation → `standards-map.md`
+
+### Freshness and source discipline
+
+- **IETF Datatracker — [OAuth 2.1 draft](https://datatracker.ietf.org/doc/draft-ietf-oauth-v2-1/)** — checked only for explicitly requested forward-looking analysis; the skill labels it as a draft until publication and does not silently promote draft language to a BCP requirement → `standards-map.md`
+- The RFC Editor info page and errata database determine RFC status and corrections. OpenID Foundation final/errata documents determine OIDC and FAPI profile status. Vendor documentation is used only for observed implementation behavior, never to weaken a normative requirement.
 
 ---
 
@@ -220,6 +364,12 @@ Authoritative sources used to develop the DDD and hexagonal architecture skills.
 - **Config precedence** (flags > env > project > user > system) → CLI design skill: "Config Precedence"
 - **Composability** (support `-` for stdin, detect interactive terminal) → CLI design skill: "Composability Patterns"
 - **Signal handling** (Ctrl-C: exit fast, bounded cleanup, crash-only) → `resources/stream-contracts.md`
+- **Secrets channel hierarchy** (never flags; keychain/credential-file/stdin preferred; env leaks to child processes and crash reports — clig.dev takes the stricter never-env line, we allow platform-injected CI env) → CLI design skill: "Prompts and Interactivity", "Config Precedence"
+- **Tiered confirmation by severity** (y/N → dry-run → typed resource name) → CLI design skill: "Prompts and Interactivity"
+- **State-change transparency** (confirm changes, `status` pattern, explicit hidden actions, pager via `less -FIRX`) → CLI design skill: "State Changes and Transparency"
+- **Robustness** (validate early, 100ms responsiveness, configurable network timeouts, recover by re-run, expect misuse) → CLI design skill: "Robustness"
+- **General-purpose env vars** (`DEBUG`, `EDITOR`, `PAGER`, proxies, `LINES`/`COLUMNS`; single-line values) → CLI design skill: "Config Precedence"
+- **Naming, distribution, telemetry consent** → CLI design skill: "Naming, Distribution, Telemetry"
 
 ### Jeff Dickey (oclif creator) — ["12 Factor CLI Apps"](https://medium.com/@jdxcode/12-factor-cli-apps-dd3c227a0e46) (2018)
 - **12 principles for CLI excellence** → CLI design skill: informed multiple sections
@@ -228,6 +378,12 @@ Authoritative sources used to develop the DDD and hexagonal architecture skills.
 - **Target < 500ms startup** → CLI design skill: verification checklist
 - **Error messages: code + title + description + fix + URL** → CLI design skill: "Error Design"
 - **Follow XDG-spec** for config file locations → CLI design skill: "Config Precedence"
+
+### Bloomberg Engineering — [Stricli](https://bloomberg.github.io/stricli/) ([source](https://github.com/bloomberg/stricli))
+- **Type-safe, functional CLI framework** — commands as plain typed functions with injected context, no decorators/classes, introspectable command tree → CLI design skill: "Recommended TypeScript Stack"
+
+### Bombshell — [Clack](https://github.com/bombshell-dev/clack)
+- **`@clack/prompts`** — interactive prompt components suited to an optional, TTY-gated presentation adapter → CLI design skill: "Recommended TypeScript Stack"
 
 ### Heroku Engineering — [Heroku CLI Style Guide](https://devcenter.heroku.com/articles/cli-style-guide)
 - **stdout stability guarantee** — "commands must not change their stdout after GA in ways that break scripts" → CLI design skill: "Output Stability Contract"
@@ -311,3 +467,112 @@ Authoritative sources used to develop the DDD and hexagonal architecture skills.
 ### Gary Bernhardt — ["Boundaries"](https://www.destroyallsoftware.com/talks/boundaries) (2012)
 - **Functional core, imperative shell** — pure domain logic surrounded by impure adapters → Hex arch skill: the fundamental structural principle
 - **Testing pure core with unit tests, shell with integration tests** → Both testing-by-layer resources
+
+## Observability
+
+### Stripe (Brandur Leach) — ["Fast and flexible observability with canonical log lines"](https://stripe.com/blog/canonical-log-lines) + [brandur.org/canonical-log-lines](https://brandur.org/canonical-log-lines)
+- **The canonical log line** — one information-dense structured event per request, accumulated by middleware, emitted in teardown so it survives failures → Observability skill: "The Wide Event" section + `resources/node-patterns.md` middleware
+- **Field inventory** (request, auth, rate limits, performance, business context) → Observability skill: wide-event field table
+
+### Charity Majors — ["There Is Only One Key Difference Between Observability 1.0 and 2.0"](https://charity.wtf/2024/11/19/there-is-only-one-key-difference-between-observability-1-0-and-2-0/) (2024) + ["Logs vs Structured Events"](https://charity.wtf/2019/02/05/logs-vs-structured-events/) (2019)
+- **The pillars critique** — many sources of truth, requests stored several times, cost multiplied per pillar; wide events as the single source of truth with read-time derivation → Observability skill: "Pillars, Honestly"
+- **One accumulated event per request per service**; capture any high-cardinality identifier → "The Wide Event" section
+- Skeptical counterweight informing the "honest limit": [Laban Eilers, "Are we ready for Observability 2.0?"](https://labaneilers.com/are-we-ready-for-observability-2.0)
+
+### OpenTelemetry — [JS getting started](https://opentelemetry.io/docs/languages/js/getting-started/nodejs/), [semantic conventions](https://opentelemetry.io/docs/specs/semconv/), [context propagation](https://opentelemetry.io/docs/concepts/context-propagation/), [sampling](https://opentelemetry.io/docs/concepts/sampling/), [Collector](https://opentelemetry.io/docs/collector/)
+- **Minimal Node adoption** (NodeSDK + auto-instrumentations, `--import` before app code, ESM caveats) → `resources/node-patterns.md`
+- **Semantic conventions** — never invent an attribute name the registry defines → semconv rule + cheat sheet
+- **W3C `traceparent` propagation** → correlation guidance here and in twelve-factor Factor XI
+- **Head vs tail sampling trade-offs** (tail = stateful Collector tier, complexity, possible lock-in) → "Sampling and Cost Economics"
+- **Collector pipeline** (receivers → processors → exporters; direct export in dev, Collector in production) → SKILL.md + Collector config in `resources/node-patterns.md`
+
+### Google SRE — [SRE book ch. 4 "Service Level Objectives"](https://sre.google/sre-book/service-level-objectives/), [ch. 6 "Monitoring Distributed Systems"](https://sre.google/sre-book/monitoring-distributed-systems/), [Workbook "Alerting on SLOs"](https://sre.google/workbook/alerting-on-slos/)
+- **SLI/SLO/SLA definitions, error budgets as the innovation contract, percentiles over averages, don't overachieve** → Observability skill: "SLIs, SLOs, Error Budgets" + `resources/slo-alerting.md`
+- **Four golden signals** with the dropped nuances (latency of failed requests separately; histograms for tails) → SLI menus
+- **Multiwindow multi-burn-rate alerting** (14.4×/6×/1× table; precision/recall/detection/reset framework) → "Alerting" section + full derivation in `resources/slo-alerting.md`
+
+### Rob Ewaschuk — ["My Philosophy on Alerting"](https://docs.google.com/document/d/199PqyG3UsyXlwieHaqbGiWVa8eMWi8zzAn0YfcApr8Q/mobilebasic)
+- **Symptom-based paging** ("Do your users care if your MySQL servers are down? No, they care if their queries are failing"); pages must be urgent, actionable, user-visible, intelligence-requiring; ~90% precision review bar → Observability skill: "Alerting" + runbook template. Endorsed by [Prometheus alerting practices](https://prometheus.io/docs/practices/alerting/)
+
+### Tom Wilkie — ["The RED Method"](https://grafana.com/blog/the-red-method-how-to-instrument-your-services/)
+- **Rate/Errors/Duration** for request-driven services as a user-experience proxy, contrasted with Brendan Gregg's infrastructure-focused USE method → Observability skill: SLI menus
+
+### Grafana Labs — ["How to manage high cardinality metrics in Prometheus and Kubernetes"](https://grafana.com/blog/how-to-manage-high-cardinality-metrics-in-prometheus-and-kubernetes/)
+- **Series-count multiplication and per-series cost** → Observability skill: the cardinality routing rule (bounded dimensions → metrics; unbounded → events/spans)
+
+### Dave Cheney — ["Let's talk about logging"](https://dave.cheney.net/2015/11/05/lets-talk-about-logging) (2015)
+- **"Nobody reads warnings"; a logged-and-handled error is not an error** — adopted as a per-line discipline on top of twelve-factor's four levels, not a level ban → Observability skill: "Structured Logging Craft"
+
+### OneUptime — ["Keep PII Out of Your Telemetry"](https://oneuptime.com/blog/post/2025-11-13-keep-pii-out-of-observability-telemetry/view) + ["Test Your OpenTelemetry Instrumentation with In-Memory Exporters"](https://oneuptime.com/blog/post/2026-02-06-test-opentelemetry-instrumentation-in-memory-exporters/view)
+- **Allowlist-based redaction at source; serializers dump whole objects** → hygiene rules + the substring-sweep test in `resources/testing-telemetry.md`
+- **In-memory exporters as the foundation of testable instrumentation** → `resources/testing-telemetry.md`
+
+### Pete Hodgson — ["Domain-Oriented Observability"](https://martinfowler.com/articles/domain-oriented-observability.html) (martinfowler.com)
+- **Domain Probe, announcement/event alternative, testing through the probe, AOP warning** → Hex arch skill: four-tier model in `resources/cross-cutting-concerns.md` + fake-probe example in `resources/testing-hex-arch.md`; Observability skill carries only the placement summary
+- Corroborating: [Gabriel Anhaia, "A Domain Logger Port"](https://dev.to/gabrielanhaia/a-domain-logger-port-decoupling-from-psr-3-without-losing-context-fmm) (severity-free port, adapter owns levels); Freeman & Pryce, *GOOS* ch. 20 "Logging Is a Feature" (support vs diagnostic logging split); [Mark Seemann, "Keeping cross-cutting concerns out of application code"](https://blog.ploeh.dk/2024/09/02/keeping-cross-cutting-concerns-out-of-application-code/) (decorators at the port boundary)
+
+### web.dev — [Core Web Vitals](https://web.dev/articles/vitals)
+- **LCP/INP/CLS at p75 of field data; lab measurement "is not a substitute for field measurement"** → Observability skill: frontend note (deferred from v1)
+
+---
+
+## Ubiquitous Language
+
+### Eric Evans — "Domain-Driven Design" (2003) + [DDD Reference](https://www.domainlanguage.com/wp-content/uploads/2016/05/DDD_Reference_2015-03.pdf)
+- **"A change in the language is a change to the model"**; awkward terms are signal; rename after deciding → Ubiquitous-language skill: core principle, protocol steps 1 and 5
+
+### Vaughn Vernon — "Implementing Domain-Driven Design" (2013), ch. 1
+- **One UL per bounded context; team speech + code as the only guaranteed-current denotation** → "Where the Language Lives" priority order
+
+### Martin Fowler — [UbiquitousLanguage bliki](https://martinfowler.com/bliki/UbiquitousLanguage.html) + [StranglerFigApplication](https://martinfowler.com/bliki/StranglerFigApplication.html)
+- **UL framing**; **Strangler Fig** → brownfield protected-core ratchet
+
+### Chris Simon — [Contextive](https://github.com/dev-cycles/contextive)
+- **Glossary format + LSP editor experience, folder-scoped contexts** → `resources/glossary-format.md`
+
+### Peter Hilton — ["Living glossaries"](https://hilton.org.uk/blog/living-glossary) + Cyrille Martraire — "Living Documentation"
+- **Glossaries rot unless reconciled against code** → the lint-checked living glossary
+
+### Vladimir Khorikov — ["Ubiquitous Language and Naming"](https://enterprisecraftsmanship.com/posts/ubiquitous-language-naming/)
+- **Weasel-suffix critique** (`Info`, `Base`, `Item`, `Manager`, `Service`, `Dto`) → the banned-vocabulary seed list in SKILL.md
+
+### NDepend — [DDD ubiquitous-language identifier rule](https://blog.ndepend.com/checking-ddd-ubiquitous-language-with-ndepend/)
+- **Prior art (.NET, 2018)** for glossary-driven identifier checking with technical-word customization → the flagship rule's token-class design; no TS equivalent exists
+
+### Greg Young — ["Refactoring and the Ubiquitous Language"](https://gregfyoung.wordpress.com/2013/02/13/refactoring-and-the-ubiquitous-language/)
+- **Internal-vs-published boundary rule** (rename freely inside; version the published language) → protocol step 5
+
+### Olaf Zimmermann — [Y-statements](https://medium.com/olzzio/y-statements-10eb07b5a177)
+- **Micro-ADR template** for model-changing renames → `resources/language-protocol.md` + adr agent
+
+### Tomasz Ducin — ["Speaking Ubiquitous Language"](https://ducin.dev/ddd-speaking-ubiquitous-language)
+- **One word per concept; two phrases must mean two concepts** → DETECT triggers
+
+### Daniel Schleicher — [glossary-steered AI workflow](https://www.danielschleicher.com/software/engineering,/ai,/spec-driven/development/2026/01/04/removing-ambiguity-with-spec-driven-development.html)
+- **Propose-never-adopt semantics** (AI flags and proposes, never adopts without approval) → protocol step 2, adopted wholesale
+
+### Alvin Sng (Factory.ai) — ["Using Linters to Direct Agents"](https://factory.ai/news/using-linters-to-direct-agents) + Addy Osmani — [agent naming drift](https://medium.com/@addyosmani/my-llm-coding-workflow-going-into-2026-52fe1681325e)
+- **Linters as the executable spec inside the agent's loop; terminology-drift failure mode** → "Mechanical Enforcement"
+
+### Evan Czaplicki — ["Compiler Errors for Humans"](https://elm-lang.org/news/compiler-errors-for-humans)
+- **Errors as the documentation people actually read** → three-part teaching messages
+
+### Craig Spence — [Betterer](https://github.com/phenomnomnominal/betterer), Sairyss — [domain-driven-hexagon rules](https://github.com/sairyss/domain-driven-hexagon), typescript-eslint — [naming-convention](https://typescript-eslint.io/rules/naming-convention/), eslint-plugin-vitest — [valid-title](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-title.md)
+
+## Specification
+- Jason Gorman (Codemanship) — specification as conversation; specs as educated guesses tested by reality.
+- Gojko Adzic, *Specification by Example* (Manning, 2011) — key examples; the counter-example challenge.
+- Matt Wynne, "Introducing Example Mapping" (cucumber.io, 2015) — the card grammar and map-shape diagnostics.
+- George Dinwiddie — the three amigos: business, development, testing in one conversation.
+
+## Technical Writing
+
+- Daniele Procida, Diátaxis (diataxis.fr) — the four-mode typology, compass, tutorial/how-to distinction, bottom-up adoption; Hillel Wayne's four-document-model critique as the honest limit.
+- Google developer documentation style guide + Microsoft Writing Style Guide — voice, front-loading, timeless docs; the Red Hat deltas-only pattern for adopting a guide.
+- noffle's Art of README (cognitive funnel), standard-readme, Preston-Werner's README-driven development.
+- Write the Docs docs-as-code; Vale prose lint; rustdoc doc-tests (executable examples); lychee; *Docs for Developers* (friction logs, errors-as-documentation); Mark Baker's *Every Page is Page One*.
+- Stripe's Markdoc post + DX teardowns (reference-generated-from-spec, runnable examples, errors first-class).
+- llms.txt (Howard) with measured adoption reality (Burridge, OtterlyAI); Kapa.ai RAG-chunkability; Netlify's Agent Experience.
+- John Carroll's minimalism (The Nurnberg Funnel; "Ten Misconceptions") — task-first, error recovery inline, every word earns its place.
+- Adam Bradley (mintuz), "Developer Writing Playbook" — the seed this skill adapted.
+- Full URLs: the skill's resources/references.md.

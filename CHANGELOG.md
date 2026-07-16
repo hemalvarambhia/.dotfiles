@@ -1,5 +1,117 @@
 # Changelog
 
+## 4.1.0
+
+### Minor Changes
+
+- f99485c: Add four coordinated architecture and engineering-decision skills: attributed `codebase-design` and `improve-codebase-architecture` adaptations with deep-module, Design It Twice, safe-deepening, and first-class offline HTML-report guidance; an attributed `reduce-system-complexity` adaptation with conservation and whole-mechanism gates; and `evaluate-existing-solutions` for evidence-led reuse, adoption, and bespoke decisions. Clarify their boundaries with structure, API design, refactoring, TDD, planning, legacy seams, and technology selection.
+- 26419a1: Add a dedicated RFC 9700-based skill for designing, implementing, auditing, testing, and migrating secure OAuth 2.0 and OpenID Connect systems.
+
+## 4.0.1
+
+### Patch Changes
+
+- 337a87b: structure-codebase: resolve the endpoint-first-BFF vs in-BFF-hexagon ambiguity. When a BFF legitimately owns an internal capability hexagon, the hexagon owns the use-case, ports, and driven adapters — but the inbound HTTP leaf always stays at `endpoints/<url>/<method>.ts`, discoverable by its URL. States the underlying principle once (the public interface's shape — URL tree, command tree — is the primary navigation axis) and adds the buried-route-leaf anti-pattern.
+
+## 4.0.0
+
+### Major Changes
+
+- 5f2d060: Replace the screaming-architecture-based folder guidance with the new `structure-codebase` skill. It selects proportional frontend, feature-, context-, endpoint-, workflow-, framework-, or visible-hexagonal structures; defines package/import enforcement and safe migrations; and reconciles the DDD and hexagonal skills with the new physical-boundary model.
+
+  This is a breaking skill rename and architecture-policy replacement. `folder-structure` remains as a deprecated explicit-invocation redirect, but it is no longer standalone: single-skill installations must add the canonical `structure-codebase` sibling as documented in `MIGRATION.md`.
+
+## 3.43.1
+
+### Patch Changes
+
+- 7559eaf: Add a fresh same-provider fallback to the `double-check` skill.
+
+  Cross-provider verification remains the first choice. When every independent verifier is unavailable or inaccessible after retrying, the skill now launches a new same-provider agent or process with no inherited conversation context, preserves the adversarial convergence loop, and clearly reports the fallback as lower-independence rather than presenting it as a cross-provider check.
+
+## 3.43.0
+
+### Minor Changes
+
+- 9f84fd9: Add a `technical-writing` skill: developer-facing prose that can be skimmed first and trusted enough to finish.
+
+  Adapted from Adam Bradley's Developer Writing Playbook (credited) and extended with deep-researched, fully-cited resources: one-mode-per-page as the leading rule (Diátaxis's four modes with the tutorial/how-to distinction most docs miss, plus the model's honest limits), the README cognitive funnel with the short-vs-long tension resolved and README-driven development's failure mode named, a docs-quality enforcement ladder (Vale prose lint, executable examples, link checking, reference generated from spec, friction logs, Google's timeless-docs rule, Every Page is Page One), and an honest 2026 guide to documentation for AI agents (the llms.txt adoption reality, markdown endpoints, RAG-chunkable structure as good-writing-restated). House principles throughout: claims need receipts, docs are verified behavior, idle states must speak, enumerable facts in tables with exact copy-pasteable strings.
+
+## 3.42.0
+
+### Minor Changes
+
+- 78856cc: Add two language skills: `ubiquitous-language` and `specification`.
+
+  `ubiquitous-language` makes the domain's language a governed artifact: a five-step protocol (SURFACE → CHECK → DECIDE → RECORD → RENAME) so vocabulary is admitted by decision, never by drift; a Contextive-compatible glossary format with per-context path scoping and a deprecation convention that names each term's replacement; brownfield bootstrap guidance; and the taxonomy of mechanical checks (banned weasel suffixes, glossary-driven identifier validation via token classes, test-title and DSL-verb checks) for projects that install an enforcement layer — with the honest note that without one, everything is convention. `specification` turns fuzzy intent into shared understanding before any story is split: one question at a time with recommendations, an example map as data, every assumption forced into a question, write-back into the team's own story artifact — and the agent-facilitated round is explicitly a first draft handed to a real three-amigos conversation via a generated review page (template included), multi-round until stable.
+
+## 3.41.0
+
+### Minor Changes
+
+- 323e267: Add an `observability` skill and a four-tier observability-placement model across the portfolio.
+
+  The new skill teaches wide events / canonical log lines as the default instrumentation primitive (with the pillars-vs-events debate handled honestly), the OpenTelemetry substrate for TypeScript services, a cardinality routing rule, the head/tail sampling ladder, SLO/error-budget discipline with multiwindow burn-rate alerting, symptom-based paging with mandatory runbooks, and telemetry as test-driven behavior via in-memory exporters. The hexagonal-architecture skill's Logging section becomes a four-tier model organized by GOOS's "logging is a feature" test: technical telemetry stays in adapters, domain-significant observations flow through a Domain Probe driven port or a domain-event subscriber (a generic `Logger` port is banned), correlation and wide-event assembly live at the edges, and instrumentation is tested with recording fakes. Canonical events are guaranteed on every terminal outcome — clean finish, exception, and client abort. Small cross-references land in twelve-factor, ci-debugging, api-design (trace ID as the RFC 9457 correlation key), and domain-driven-design.
+
+## 3.40.0
+
+### Minor Changes
+
+- 08d046a: Reconcile the `hexagonal-architecture` and `folder-structure` skills with the source pattern, from a cover-to-cover read of _Hexagonal Architecture Explained_ (Cockburn & Garrido de Paz).
+
+  Corrections: the pattern is symmetric (inside vs outside) — the left/right asymmetry exists only in implementation as who-knows-whom (provided vs required interfaces); runtime configurability of driven actors is the actual pattern requirement (parameter injection is one of three sanctioned configurator shapes, kept as this skill's house default). Disclosures: the source convention purpose-names every port (`ForGettingTaxRates`, `ForPaying`) — this skill's role-noun driven ports are now a documented house choice with book-style names as equal alternatives. New: actor/interactor and primary/secondary vocabulary, pattern-requirements vs house-style checklist tiers, the "a port is only real if it has a test interactor" principle, two anti-patterns (port for a domain concept; nested hexagons), a `greenfield-sequence` resource (folders first, disposable first test, walking skeleton), purpose-named `ports/` folder conventions, and per-chapter citations in references. Fakes location reconciled to `adapters/fakes/` across both skills.
+
+## 3.39.0
+
+### Minor Changes
+
+- 891d693: Improve the `cli-design` skill with a full sweep of the Command Line Interface Guidelines (clig.dev) and a recommended TypeScript stack.
+
+  One genuine correction: secrets get a channel hierarchy instead of a flat "files/stdin/env" list — never via flags; OS keychain or a `0600` credential file preferred, then stdin (`--with-token < token.txt`), with env vars acceptable only where the platform injects them (CI secret stores), never as the primary documented path (they leak to child processes and crash reports). New guidance: tiered confirmation by severity (y/N → suggest `--dry-run` → typed resource name for irreversible actions), a "State Changes and Transparency" section (confirm what changed, the `status` pattern, make hidden file/network access explicit, page long output via `$PAGER`), a "Robustness" section (validate early, 100ms responsiveness, configurable network timeouts with exit 75, recover by re-run, expect misuse), the variadic-args exception to the flags-over-args rule, help support-links and typo suggestions, general-purpose env vars (`DEBUG`, `EDITOR`, `PAGER`, proxies), deprecation warnings that stop once users migrate, and a "Naming, Distribution, Telemetry" section (opt-in telemetry only).
+
+  Also adds a "Recommended TypeScript Stack" section: Stricli (commands as pure typed functions with injected context — testable without subprocess spawning, introspectable command tree, light startup) plus `@clack/prompts` (interactivity as an optional TTY-gated presentation adapter), with honest trade-offs against commander, oclif, and @effect/cli. All sources credited in `skills/REFERENCES.md`.
+
+## 3.38.0
+
+### Minor Changes
+
+- f68299e: Add the `event-sourcing` skill: a functional-TypeScript guide to persisting state as an append-only log of events and rebuilding it by folding them (the Decider), positioned as the top rung of the complexity ladder rather than a default.
+
+  Builds on the existing `domain-driven-design` (Decider), `hexagonal-architecture` (event store as a driven port, CQRS-lite), `typescript-strict`, and `testing` skills. The main SKILL.md covers when to use it (and when not), the Decider write model, the command-handler loop, the event store port, events-as-data, projections, and behaviour-driven testing. Eight deep-dive resources plus source notes cover the decision framework, event modelling (EventStorming), rehydration and decider composition, the event store and Postgres storage, projections and read models, event versioning (tolerant reader/upcasting), testing event-sourced systems, and production concerns (snapshots, sagas, delivery guarantees, GDPR crypto-shredding). Grounded in primary sources — Young, Fowler, Chassaing, Wlaschin, Brandolini, Verraes, Dudycz — recorded in `skills/REFERENCES.md`. The `domain-driven-design` and `hexagonal-architecture` skills now cross-link into it at their event-sourcing decision points (the domain-events complexity ladder and the CQRS-lite upgrade path).
+
+### Patch Changes
+
+- 331a637: Fix `install-claude.sh` mishandling skills installed by skills CLI ≥ 1.5, which copies each skill into `~/.claude/skills/<name>` as a regular directory (tracked in `~/.agents/.skill-lock.json`) instead of symlinking through the universal `~/.agents/skills/` cache. The installer treated every regular directory as a pre-skills.sh leftover, so on each run it moved all CLI-managed skills aside as "legacy" and then warned that the freshly reinstalled copies "won't be visible to non-Claude agents" — an endless move-and-reinstall cycle that could leave skills missing if an install step failed after the move (and made a newly merged skill look like it never installed).
+
+  The installer now consults the skills CLI lock file: symlinked entries and lock-tracked directories are both recognised as CLI-managed and left alone; only genuinely unmanaged directories are migrated aside or warned about. Adds `test/install-claude-skill-layout.sh` covering all three layouts.
+
+- 331a637: Quality sweep across 20 existing skills, driven by a four-agent adversarial review (every finding independently verified — compile claims against `tsc 5.7.2 --strict`, factual claims against primary sources or live registries/CLIs):
+
+  - **Non-compiling snippets fixed (9):** union member access without narrowing in `testing` and DDD's `testing-by-layer` (replaced with whole-value `toEqual` assertions); implicit-`any` parameters and `await` in a non-async callback in `testing`'s extraction example; implicit-`any` in `react-testing`'s legacy resource; a `Record` indexed on a union member missing the key in hexagonal's cross-cutting concerns (now `Extract<...>`); a spread that silently overwrote its own sanitised fields plus a zero-arg call to a one-arg factory in DDD's aggregate design; an `evolve` that could not typecheck against the discriminated-union state DDD itself mandates; a dangling `result` variable in `api-design`'s idempotency example; a non-UUID literal passed to `crypto.randomUUID` mocking in `characterisation-tests`; and the incoherent over-engineered `compose` example in `functional`.
+  - **Stale/wrong facts corrected:** Stryker's `trim()` mutation (removed, not `trimStart()`); deprecated Zod idioms (`z.string().email()` → `z.email()`); a fabricated npm package and nonexistent "Vitest Jest-compatibility mode" in `characterisation-tests`; `getByDisplayValue` wrongly listed as a Vitest Browser Mode locator; RFC 9745's Deprecation header (published, `@`-timestamp syntax — no longer a draft with HTTP-date); "Stripe never made a v2" (they did, 2024); 422's renamed reason phrase; a dead attribution link in `test-design-reviewer`; `npx skills check` documented as read-only when it applies updates; PlantUML `mxgraph` stencils flagged as a docu.md-viewer extension that standard renderers reject, with a new "where will this be viewed?" rule in `diagrams`; stale Gemini model example in `double-check`.
+  - **Contradictions reconciled:** DDD's `Occasion` entity now matches every snippet that uses it; `cli-design`'s FakeLogger now implements the real `Logger` port and two falsely-justified type assertions are gone; optimistic-locking guidance now follows the skills' own error-modeling rule; CORS vs "disable OPTIONS" conflict resolved; Given/When/Then framing in `find-gaps`/`story-splitting` reworded to precondition → trigger → observable outcome (this repo's BDD is not Gherkin); `refactoring`'s priority table and "when not to refactor" bullets no longer forbid all refactoring; `storyboard`'s `/harden` references corrected to `/impeccable harden` and its commit steps now respect the commit-approval gate; three wrong relative resource paths fixed.
+
+## 3.37.1
+
+### Patch Changes
+
+- 17046cf: Fix `double-check` skill being silently skipped by the skills.sh installer
+
+  The skill's `description` frontmatter contained an inline `": "` (in
+  `Provider-agnostic: it always picks...`). YAML reads colon-space inside an
+  unquoted plain scalar as a nested mapping, so `npx skills add` failed to
+  parse the frontmatter and silently dropped the skill — the installer found
+  27 of 28 skills and `double-check` never landed in `~/.agents/skills/`.
+  Replaced the colon with an em dash to match the description's existing style.
+
+## 3.37.0
+
+### Minor Changes
+
+- 476f512: Add the `double-check` skill — independent cross-provider verification
+
+  New auto-discovered skill that gets a second opinion on finished work from a _different_ AI provider's CLI agent (codex, claude, gemini, or cursor-agent) running locally, then drives a constructive back-and-forth between the two agents until both genuinely agree. Host-agnostic: it detects the hosting agent's model lab and always picks a verifier from a different lab, configured for the best available model and highest reasoning effort, in a read-only sandbox. Includes a provider command reference and a verifier brief template in `resources/`.
+
 ## 3.36.1
 
 ### Patch Changes

@@ -14,6 +14,8 @@ description: Functional programming patterns with immutable data. Use when writi
 
 ---
 
+Small pure functions are an implementation technique, not a mandate to publish one function per module. Keep related helpers private and colocated when they compose into one coherent responsibility; use `codebase-design` when choosing the stable caller-facing contract.
+
 ## Core Principles
 
 - **No data mutation** - immutable structures only
@@ -62,9 +64,9 @@ const userNames = activeUsers.map(u => u.name);
 // ❌ OVER-ENGINEERED - Unnecessary abstraction
 const compose = <T>(...fns: Array<(arg: T) => T>) => (x: T) =>
   fns.reduceRight((v, f) => f(v), x);
-const activeUsers = compose(
-  filter((u: User) => u.active),
-  map((u: User) => u.name)
+const withoutInactive = compose(
+  (users: readonly User[]): readonly User[] => users.filter(u => u.active),
+  (users: readonly User[]): readonly User[] => users.filter(u => !u.suspended),
 )(users);
 ```
 

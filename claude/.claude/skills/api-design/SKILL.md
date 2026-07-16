@@ -1,11 +1,13 @@
 ---
 name: api-design
-description: Stable API and interface design patterns. Use when designing REST endpoints, module boundaries, component prop interfaces, or any public contract between systems. Covers contract-first development, error semantics (RFC 9457), REST conventions, pagination, idempotency, rate limiting, and backward compatibility. For TypeScript type patterns (branded types, discriminated unions, schemas), see typescript-strict. For validation at trust boundaries, see typescript-strict.
+description: Stable consumer-facing API and interface design patterns. Use when designing REST endpoints, reusable component prop interfaces, cross-team boundaries, or any externally consumed or versioned contract. Covers contract-first development, error semantics (RFC 9457), REST conventions, pagination, idempotency, rate limiting, and backward compatibility. For an in-process feature or module's coherent responsibility and interface depth, use codebase-design. For TypeScript type patterns and trust-boundary validation, see typescript-strict.
 ---
 
 # API and Interface Design
 
-For TypeScript type patterns (branded types, discriminated unions, schema-first), see the `typescript-strict` skill. For immutability patterns, see the `functional` skill. For testing API behavior, see the `testing` skill.
+Use this skill for consumer compatibility and protocol semantics. For an in-process module's responsibility, full caller burden, information hiding, and depth, load `codebase-design`; use both when an internal module also exposes a public or cross-team contract. Use `evaluate-existing-solutions` only when a material gateway, framework, SDK, provider, or protocol-implementation choice remains unresolved; API semantics and compatibility stay here.
+
+For TypeScript type patterns (branded types, discriminated unions, schema-first), see the `typescript-strict` skill. For immutability patterns, see the `functional` skill. For testing API behavior, see the `testing` skill. For OAuth 2.0 or OpenID Connect, load the `secure-oauth-oidc` skill rather than treating authentication as an ordinary API-key decision.
 
 **Deep-dive resources** are in the `resources/` directory. Load them on demand:
 
@@ -14,14 +16,14 @@ For TypeScript type patterns (branded types, discriminated unions, schema-first)
 | `problem-details.md` | Implementing RFC 9457 error responses — member semantics, single-error and validation-error JSON examples, extension members, §5 security guidance |
 | `api-evolution.md` | Versioning strategies and deprecation patterns |
 | `api-security.md` | Securing the API boundary |
-| `auth-security.md` | JWT and OAuth 2.0 security deep-dive |
+| `auth-security.md` | JWT BCP security and routing to the dedicated OAuth/OIDC skill |
 | `http-fundamentals.md` | HTTP protocol fundamentals — caching directives, content negotiation, browser security, status codes, header design |
 
 ## When to Use
 
 - Designing new API endpoints
-- Defining module boundaries or contracts between teams
-- Creating component prop interfaces
+- Defining contracts between teams or independently released consumers
+- Creating reusable consumer-facing component prop interfaces
 - Changing existing public interfaces
 - Establishing database schema that informs API shape
 
@@ -111,6 +113,8 @@ The standard format for machine-readable API errors for public APIs. Use `applic
 
 Errors should be **actionable**: the consumer should know what went wrong, why, and what to do about it. Error responses are not a debugging tool — never expose stack traces, internal paths, or implementation details.
 
+Include a correlation identifier (the trace ID, or an opaque reference to it) as an extension member or via `instance`, so a user-reported error joins to its trace and canonical log event — see the `observability` skill. The trace ID reveals nothing internal; it is a lookup key, not a detail leak.
+
 See `resources/problem-details.md` for full member semantics, single-error and validation-error JSON examples, extension member rules, when NOT to use Problem Details, and RFC 9457 §5 security guidance.
 
 ### HTTP Status Code Mapping
@@ -122,7 +126,7 @@ See `resources/problem-details.md` for full member semantics, single-error and v
 | 403 | Forbidden | Authenticated but not authorized |
 | 404 | Not Found | Resource doesn't exist |
 | 409 | Conflict | Duplicate, version mismatch |
-| 422 | Unprocessable Entity | Validation failed (semantically invalid) |
+| 422 | Unprocessable Content | Validation failed (semantically invalid) |
 | 429 | Too Many Requests | Rate limit exceeded (include `Retry-After` header) |
 | 500 | Internal Server Error | Server error (never expose internal details) |
 
@@ -183,6 +187,11 @@ app.post('/api/payments', async (req, res) => {
   const cached = await idempotencyStore.get(idempotencyKey);
   if (cached) {
     return res.status(cached.status).json(cached.body);
+  }
+
+  const result = CreatePaymentSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(400).json(toValidationProblem(result.error));
   }
 
   const payment = await paymentService.create(result.data);

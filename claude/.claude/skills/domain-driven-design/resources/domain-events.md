@@ -39,11 +39,18 @@ const decide = (command: OrderCommand, state: OrderState, now: Date): readonly O
   }
 };
 
-// 2. Evolve: state + event → new state (pure state transformation)
+// 2. Evolve: state + event → new state (pure state transformation).
+// OrderState is a discriminated union of lifecycle phases (see "Make Illegal
+// States Unrepresentable"), so each case builds the full target variant —
+// spreading a draft state into a shipped shape would not type-check.
 const evolve = (state: OrderState, event: OrderEvent): OrderState => {
   switch (event.type) {
-    case 'OrderPlaced': return { ...state, status: 'placed', placedAt: event.placedAt };
-    case 'OrderShipped': return { ...state, status: 'shipped', trackingNumber: event.trackingNumber };
+    case 'OrderPlaced':
+      return { status: 'placed', items: event.items, placedAt: event.placedAt };
+    case 'OrderShipped':
+      return state.status === 'placed'
+        ? { ...state, status: 'shipped', trackingNumber: event.trackingNumber }
+        : state;
     default: { const _: never = event; return _; }
   }
 };
@@ -153,7 +160,7 @@ const handlePlaceOrder = async (
   return { success: true, order: newState };
 };
 
-// EventOutbox port — driven adapter
+// Policy-side outbox contract — a driven port when hexagonal architecture is used
 interface EventOutbox {
   readonly save: (events: readonly OrderEvent[]) => Promise<void>;
 }
@@ -172,7 +179,7 @@ Use when: events must not be lost, cross-service communication, audit requiremen
 | Outbox pattern | At-least-once | Medium | Cross-service, must not lose events |
 | Full event sourcing | Complete history | High | Audit trail, temporal queries, replay |
 
-Start with explicit returns. Move to in-process dispatch when you need cross-aggregate coordination. Move to outbox when you need reliability. Move to event sourcing only when you need the event history itself.
+Start with explicit returns. Move to in-process dispatch when you need cross-aggregate coordination. Move to outbox when you need reliability. Move to event sourcing only when you need the event history itself — for that final rung (the Decider as a persisted write model, event stores, projections, and event versioning) load the `event-sourcing` skill.
 
 ## Process Managers (Long-Running Workflows)
 

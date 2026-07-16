@@ -2,6 +2,10 @@
 
 Hex arch's primary value is testability. The architecture creates natural test boundaries — but the primary boundary is the **use case**, not each layer in isolation. This approach follows Use Case Driven Development (UCDD) — see `references.md` for sources.
 
+## A Port Is Only Real If It Is Tested
+
+Every port needs a test interactor: a test driver at each driving port, a fake at each driven port. Without one, the "port" is an arbitrary interface line — nothing enforces it as a boundary. The tests double as the leak detector: business logic drifting into an adapter, or technology detail drifting into the domain, breaks a boundary test the moment it happens. When reviewing, ask of each port: what drives it, or fakes it, in the test suite?
+
 ## Primary Boundary: The Use Case
 
 Test by calling the driving port implementation with driven ports replaced by in-memory fakes. This exercises the full business logic path without touching infrastructure.
@@ -57,6 +61,42 @@ const createFakeOrderRepo = (): OrderRepository & { readonly savedEntities: read
 - Changing a repository method signature breaks all mocks but is caught by fake type errors
 
 **Note on mutability in fakes:** Fakes use mutable internal state (`Map.set`, `Array.push`) to simulate a data store. This is a deliberate testing-only exception to the immutability rule — fakes are test infrastructure, not domain code. The domain types they store remain immutable.
+
+## Fakes for Instrumentation Ports (Domain Probes)
+
+A Domain Probe (see `cross-cutting-concerns.md`, Tier 2) is a driven port, so it gets a recording fake like any other. Use-case tests then assert observations as behavior — "placing a rejected pledge announces the rejection" — the same way they assert a save happened.
+
+```typescript
+const createRecordingPledgeInstrumentation = (): PledgeInstrumentation & {
+  readonly observed: readonly Record<string, unknown>[];
+} => {
+  const observed: Record<string, unknown>[] = [];
+  return {
+    pledgeRejected: (reason, occasionId) => { observed.push({ kind: 'pledge-rejected', reason, occasionId }); },
+    pledgeAccepted: (amount, occasionId) => { observed.push({ kind: 'pledge-accepted', amount, occasionId }); },
+    get observed() { return observed; },
+  };
+};
+
+it('announces the rejection when funding is closed', async () => {
+  const instrumentation = createRecordingPledgeInstrumentation();
+  const pledging = createPledgingToOccasions(
+    createFakeOccasionRepo({ occasions: [closedOccasion] }),
+    createFakeContributorRepo(),
+    instrumentation,
+  );
+
+  await pledging.pledgeToOccasion(getMockPledge({ occasionId: closedOccasion.id }));
+
+  expect(instrumentation.observed).toContainEqual({
+    kind: 'pledge-rejected',
+    reason: 'funding-closed',
+    occasionId: closedOccasion.id,
+  });
+});
+```
+
+The probe's adapter — translating observations into log lines, metrics, or span attributes — is tested separately as adapter code (see the `observability` skill's `resources/testing-telemetry.md` for in-memory exporter patterns). Mutation-testing note: an unasserted probe call is a surviving-mutant farm; asserting observations through the fake is what makes instrumentation mutation-proof behavior.
 
 ## Domain Unit Tests: A Complement
 
