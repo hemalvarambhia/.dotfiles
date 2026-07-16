@@ -39,7 +39,7 @@ by Robert C Martin applies here.
 ### Coupling
 
 According to Alistair Cockburn, this concept refers to
-how much communication or how much dependency is required between to modules (classes, function, packages).
+how much communication or how much dependency is required between two modules (classes, function, packages).
 Poorly encapsulated objects tend to end up being tightly coupled to their clients. 
 
 > Systems with high coupling are more difficult to maintain and evolve [1].
