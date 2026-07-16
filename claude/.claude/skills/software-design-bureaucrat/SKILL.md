@@ -23,11 +23,19 @@ The skill uses the ideas of:
 ## Key Principles
 
 ### Cohesion 
-This defines the relatedness of a component of module/component. Similarly,
+This defines the relatedness of a component or module/component. Similarly,
 
 > Cohesion comes from the same root word that “adhesion” comes from. It’s a word about sticking...two lumps of clay will 
 > cohere when you put them together, and matched, well-machined parts sometimes seem to cohere because the fit is so precise. 
 > Adhesion is one thing sticking to another; cohesion is a mutual relationship, with two things sticking together.
+>...
+> 
+> This is also why we refer to a sound line of reasoning, for example, as coherent. The thoughts fit, they go together, 
+> they relate to each other. This is exactly the characteristic of a class that makes it coherent: the pieces all seem to be 
+> related, they seem to belong together, and it would feel somewhat unnatural (it would result in tight coupling!) to pull them apart. 
+> Such a class exhibits cohesion. No glue is required, you don’t have to build extra code to make the pieces fit together; 
+> the pieces hang together naturally because they’re closely related. In contrast, sometimes a class will seem to have its fingers 
+> in way too many parts of your system. Such a class is adhesive, and that’s not what we’re looking for.
 
 [Cohesion, Glenn Vanderberg (2011)](https://vanderburg.org/blog/2011/01/31/cohesion.html)
 
