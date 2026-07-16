@@ -31,10 +31,9 @@ This defines the relatedness of a component of module/component. Similarly,
 
 [Cohesion, Glenn Vanderberg (2011)](https://vanderburg.org/blog/2011/01/31/cohesion.html)
 
-The Single Responsibility Principle (SRP) is related to cohesion. Robert C. Martin defines the 
+The Single Responsibility Principle (SRP) is related to cohesion, which Robert C. Martin defines as: 
 > Gather together those things that change for the same reason and separate those things that change for different reasons.
 
-by Robert C Martin applies here.
 
 ### Coupling
 
