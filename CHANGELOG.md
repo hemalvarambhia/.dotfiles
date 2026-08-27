@@ -1,5 +1,605 @@
 # Changelog
 
+## 4.12.2
+
+### Patch Changes
+
+- fdf1454: Let the installer run from anywhere
+
+  `--version` defaulted to the current checkout's exact HEAD, unconditionally. That
+  made the script usable only from a checkout whose HEAD happened to be pushed:
+
+  - Run it from a checkout with an unpushed commit and the install aborted
+    (`upload-pack: not our ref`).
+  - Run a stray copy of the script and it refused before starting: _"--version
+    requires an exact reviewed release tag or commit outside a git checkout"_.
+  - Worst of all, a piped install (`... | bash`) leaves `BASH_SOURCE` unset, so
+    `dirname ""` resolved to `.` — the directory the user happened to be standing
+    in. Running the one-liner from inside _any_ other repository pinned the
+    install to **that** repository's HEAD, producing
+    `upload-pack: not our ref <sha>` for a commit that was never in this project.
+
+  The default is now worked out rather than assumed, and still resolves to an exact
+  immutable revision in every case:
+
+  | Situation                                                       | Pin                                                             |
+  | --------------------------------------------------------------- | --------------------------------------------------------------- |
+  | `--version REF` passed                                          | that revision, validated as before                              |
+  | Inside a checkout **of this repository**, HEAD is on the remote | HEAD — a contributor still installs exactly what they inspected |
+  | Inside a checkout, HEAD is not on the remote                    | latest release, with a notice naming both commits               |
+  | No checkout at all                                              | latest release                                                  |
+
+  The latest release is read straight from the remote's tags, so it needs no local
+  clone. A failure to reach the repository at all is still an error, but now says so
+  plainly instead of blaming `--version`.
+
+  The script's own location now counts only when it is a real file inside a real
+  checkout of this repository, so an unrelated repo — or the current directory of a
+  piped install — can never become the version source. `--version <tag>` also
+  resolves against the remote, so it works with no checkout at all.
+
+  Verified against the real remote: piped from inside an unrelated repository, piped
+  from a plain directory, and run from an unpushed checkout all install the newest
+  release; a pushed checkout of this repository still pins to its own HEAD; and
+  `--version v4.12.0` resolves to that tag's commit without a checkout.
+
+- 379a5d7: Verify the first-party pin is reachable before touching installed skills
+
+  The installer pins first-party skills to the current checkout's exact HEAD. When
+  that commit has never been pushed, the remote cannot serve it — but the failure
+  surfaced only after every selected skill had already been moved into a backup
+  directory, leaving the user's skills stranded mid-install with an opaque
+  `upload-pack: not our ref` (or, before local fetches, a bare HTTP 404).
+
+  The pinned first-party revision is now fetched as a preflight, before the
+  manifest is validated or anything is backed up, and the fetch is memoised so the
+  later install reuses it rather than fetching the same commit twice. A failure
+  now aborts with nothing changed and names the actual cause:
+
+  ```
+  ✗ Cannot reach pinned revision <sha> in citypaul/.dotfiles
+
+  This usually means the commit has not been pushed. The installer pins
+  first-party skills to this checkout's exact HEAD, so a local-only commit
+  cannot be fetched back from GitHub.
+
+  Fix it with one of:
+    • git push
+    • ./install-claude.sh --version $(git rev-parse origin/main)
+    • ./install-claude.sh --version v4.12.0
+
+  Nothing was changed. Your installed skills are untouched.
+  ```
+
+  Covered by `test/install-claude-unpushed-version.sh`, which asserts the install
+  fails, no backup directory is created, existing skills survive, the Skills CLI
+  is never invoked, and the error names both the cause and the remedy.
+
+## 4.12.1
+
+### Patch Changes
+
+- 4dfe6bd: Install commit-pinned skill sources from local pinned git fetches instead of
+  whole-repository archive downloads. The pinned Skills CLI cannot fetch a
+  commit SHA itself (`git clone --branch` rejects SHAs) and its archive
+  downloader enforces 10MB/25MB/1000-file caps that the impeccable and herdr
+  commit archives exceed. Each pinned source is now fetched with a shallow
+  `git fetch` of exactly the reviewed commit — sparse-filtered to a declared
+  subdirectory when the repository is far larger than its skills — and handed
+  to the CLI as a local path, so no size overrides are needed at all.
+
+  This supersedes the earlier raised download cap
+  (`SKILLS_DOWNLOAD_MAX_BYTES`): local sources bypass the CLI's downloader
+  entirely, so the override is removed.
+
+  Also repoint the Next.js skills to their new home: vercel-labs/next-skills
+  was retired. `next-best-practices` and `next-upgrade` now ship inside
+  Next.js itself (bundled docs plus the AGENTS.md that `next dev` generates),
+  and `next-cache-components` split into `next-cache-components-optimizer` and
+  `next-cache-components-adoption`, which install from the `skills/` directory
+  of vercel/next.js at a reviewed commit — an ~8MB sparse fetch instead of a
+  52MB whole-monorepo archive.
+
+## 4.12.0
+
+### Minor Changes
+
+- 96cdd38: Add the react-performance skill and pin Vercel's React rule catalogues
+
+  Installs `vercel-react-best-practices` (72 impact-ordered React/Next.js
+  performance rules) and `vercel-composition-patterns` (compound components,
+  boolean-prop proliferation, React 19 API changes) from
+  `vercel-labs/agent-skills` at reviewed commit `b8caa26`. Installed from upstream
+  rather than vendored: Vercel maintains the rule set, and the repository
+  publishes no `LICENSE` file to vendor under — each skill declares `license: MIT`
+  in its own frontmatter only.
+
+  Adds a first-party `react-performance` skill that owns the _method_ while those
+  catalogues own the _rules_, because a prioritized rule list is a search order,
+  not a diagnosis:
+
+  - **Baseline, attribute, one rule per diff, re-measure.** A change that does not
+    move the number is reverted rather than kept as good practice — unmeasured
+    optimization is mechanism without benefit.
+  - **Routing across the overlap.** Names which of `vercel-react-best-practices`,
+    `vercel-composition-patterns`, `next-best-practices`, `next-cache-components`,
+    `core-web-vitals`, `performance`, `react-testing` and `xstate` owns a given
+    question, and resolves disagreement toward the more specific source.
+  - **Where house rules win.** Behavior tests never change to accommodate a
+    performance change; immutability holds until a measurement says otherwise and
+    then only locally inside a proven hot path; no `any` or unjustified assertion
+    bought for speed; memoization is earned rather than reflexive; removing
+    mechanism beats adding a cache; a re-render storm caused by flow logic
+    scattered across effects is an `xstate` problem, not a memoization one.
+
+  `CLAUDE.md` carries the measure-first rule directly, so it applies without
+  loading the skill. Registered in the installer, README catalogue and decision
+  table, `panel-review` lenses, and `skills/REFERENCES.md`.
+
+- 96cdd38: Add the render-code-shape skill for cited, read-only renders of how code composes
+
+  Renders the _shape_ of code — entry points, the frame edge, module boundaries,
+  the types crossing them, signatures, and an annotated call graph per wiring —
+  while collapsing everything below the waterline to one line of intent. Only
+  bodies are pseudo: every name, type, and path is read from source and cited by
+  file and line, or marked `[NEW]`. That citation discipline is what separates the
+  render from a remembered summary.
+
+  Use it to understand an unfamiliar path, trace what a request actually touches,
+  or pseudocode a change before building it. A `[NEW]` render is an input to a
+  `planning` slice and the shape an implementation can be checked against — never
+  a substitute for the failing behavior test `tdd` requires.
+
+  Read-only by construction: producing a render never authorizes changing
+  production code, tests, or configuration, and it states facts rather than
+  verdicts. Findings route to the skill that owns the decision — `codebase-design`
+  for boundary quality, `structure-codebase` for placement,
+  `improve-codebase-architecture` for ranked investment, `finding-seams` and
+  `characterisation-tests` for untested or untestable paths.
+
+  An attributed adaptation of Adam Bulmer's MIT-licensed `pseudocode` skill at
+  pinned commit `976d4a0c`. Retains the waterline metaphor, the cite-or-mark-`[NEW]`
+  rule, the five-step workflow, the wiring concept, the four path-termination
+  conditions, the above/below cut table, and the annotated call-graph format.
+  Renamed for trigger accuracy — "pseudocode" reads as throwaway sketching and
+  under-fires on "how does this compose?" — following the same precedent as
+  `reducer` → `reduce-system-complexity`, with the original vocabulary kept in the
+  description so it still discovers the skill. Adds a fabrication guard against
+  recalled or inferred signatures, a narrowest-frame proportionality rule,
+  glossary binding via `ubiquitous-language`, an anti-pattern catalog, and a
+  completion check. The upstream MIT notice and full provenance are preserved in
+  `LICENSE` and `references/source-notes.md`.
+
+- 96cdd38: Add the writing-for-agents and skill-creator external skills
+
+  Two pinned external skills for writing and evaluating the skills in this
+  distribution — the gap that let a badly triggered skill ship in the first place.
+
+  - **`writing-for-agents`** (Matt Pocock, MIT) — writing documents an _agent_
+    consumes: a SKILL.md, `CLAUDE.md`/`AGENTS.md`, or a doc reached by a pointer.
+    Context pointers and the fact that a pointer's wording rather than its target
+    decides when material gets reached; the context-load versus cognitive-load
+    split; the information hierarchy and progressive disclosure; and completion
+    criteria whose clarity resists premature completion. Installs from the
+    **existing** reviewed `84fdeff` pin — `writing-for-agents` is already present
+    at that revision, so `grill-me` needs no re-audit.
+  - **`skill-creator`** (Anthropic, Apache 2.0, pinned `f17010c`) — the authoring
+    loop: draft, write test prompts, run the skill against them, evaluate
+    qualitatively and quantitatively, rewrite, expand the test set. Ships eval and
+    benchmark tooling plus `improve_description.py` for tuning trigger accuracy,
+    which is directly the failure class behind the xstate trigger rewrite.
+
+  Routed rather than merely installed, because overlapping skills confuse which
+  one fires: `technical-writing` owns human-facing prose, `writing-for-agents`
+  owns agent-facing instruction — the split is by audience, not by file type — and
+  `skill-creator` owns the authoring and measurement loop around the words.
+  `CLAUDE.md` carries that routing directly. Registered in the installer manifest,
+  `--no-external` help, README catalogue and external-source lists,
+  acknowledgements, and `skills/REFERENCES.md`. New test guards assert the
+  Anthropic pin is a full commit SHA, that the writing skill installs from the
+  audited Pocock pin, and that the two writing skills stay routed apart.
+
+- 96cdd38: Add the xstate skill and register it everywhere it has to be registered
+
+  Models front-end flow logic as XState v5 statecharts and actors. Prefers
+  statecharts by default for wizards, checkout/auth/upload flows, and async
+  orchestration with retries and timeouts on AI-assisted-development grounds:
+  machines are headlessly provable before any UI exists, impossible states become
+  unrepresentable, the whole behavior surface is one reviewable artifact, and
+  humans get the Stately diagram for free.
+
+  Six deep-dive references: the when-to-model complexity ladder (useState →
+  @xstate/store → discriminated union → machine → actor system) with flag-smell
+  signals and the finite-state vs context split; event-first machine design with
+  naming conventions, v5 transition/re-entry semantics, and an anti-pattern
+  catalog; actors and systems (invoke vs spawn, spawn hygiene, systemId
+  receptionist, persistence semantics, inspection); @xstate/react integration
+  (hook selection, createActorContext, StrictMode, @xstate/store tier);
+  behavior-driven machine testing (provide() as the seam, SimulatedClock, pure
+  transition, model-based paths via xstate/graph, mutation-score guidance); and
+  the setup() typing model with the full v4→v5 migration table.
+
+  The skill is now aimed at the failure that actually happens. Field review of a
+  production actor-based front end found a `submitting` flag left in component
+  `useState` — classified as presentational because it rendered as a disabled
+  button, while an existing actor already owned that command's lifecycle,
+  retries and errors. Six changes address it:
+
+  - **It fires before XState is chosen.** A write-time smell list triggers on
+    ordinary React: a `submitting`/`isLoading` `useState`, a promise chain
+    setting state in sequence, a double-submit guard, an error cleared before a
+    retry, a `useEffect` sequencing the next step or needing an ignore flag in its
+    cleanup, a timer something must clear, a gesture handler binding document
+    listeners it must unbind, or handling for a response arriving after cancel or
+    unmount. Any one is the entry point, however small the request, and whether or
+    not the file imports `xstate`. A skill that only loads inside machine files
+    can never catch the decision to hand-roll one.
+  - **Two lifetime tests, never appearance.** Test 1: did an external answer
+    change it — server, BFF, socket, timer, another actor? Test 2: does the
+    interaction have an interruptible middle — a drag holding pointer capture
+    that cancels on Escape, a panel with a closing animation, a gesture binding
+    document listeners it must unbind? A disabled button or spinner is the
+    presentation _of_ temporal state. State stays in React only when both come
+    back empty: one event sets it completely, nothing to interrupt or dispose.
+    Test 2 matters because a drag is user-driven, so an external-cause test alone
+    misfiles it.
+  - **State the verdict, ask on genuine ties.** Run both tests over every
+    `useState` and report the call in one line so the user can overrule it. Where
+    it is genuinely close, name the state and the phase that makes it a lifecycle
+    and put the choice to the user before building.
+  - **Criteria for when a new machine is justified** — a distinct unit of
+    functionality with its own inputs and outputs, typically its own connection,
+    resource, or authority. The question to answer out loud is not "does this
+    deserve a machine?" but "why does this not belong to the machine that already
+    owns this edge?"
+  - **An existing owner ends the ladder discussion.** The complexity ladder
+    answers a greenfield question; when an actor already owns the lifecycle, the
+    state goes in it. Rungs 1 and 3 no longer read as permission to hand-roll.
+  - **Step zero checks who owns machines here.** Repository architecture tests,
+    import rules, and conventions outrank the skill's colocation default; a
+    correct machine in a forbidden layer still fails CI.
+
+  Anti-patterns now lead with under-modeling rather than over-modeling, matching
+  how agents actually fail, and a violation-sweep procedure covers finding the
+  same mistake across a feature. A Mermaid `stateDiagram-v2` render is
+  regenerated from the final definition whenever a machine is designed or
+  changed, not just when asked for, because a committed diagram the code has
+  moved past is worse than none.
+
+  Registration completes the skill: it was previously reachable only as a
+  `panel-review` lens and shipped to nobody. It is now selected by
+  `install-claude.sh`, routed from `CLAUDE.md` (which carries the classify-by-cause
+  rule directly, so it applies even when the skill is not loaded), catalogued in
+  the README, and documented in `skills/REFERENCES.md`. `structure-codebase` now
+  owns declaring which layer may hold machines, and `react-testing` points at
+  `xstate` when a component holds a flow flag. A new test guard fails the build
+  when any first-party skill directory exists without being selected by the
+  installer.
+
+  Grounded in primary sources (Harel 1987, statecharts.dev, Stately v5 docs
+  verified against xstate 5.32.x and the npm registry, SCXML, Khourshid, Dodds,
+  Pocock, Shevlin, Redux Style Guide).
+
+  Adam Bulmer fixed the same trigger inversion upstream on the same day, from the
+  same incident (mintuz/skills PR #47). His merged version contributed the second
+  lifetime test, the precise negative test, the "presentation _of_ temporal state"
+  phrasing, four further smells (ignore-flag cleanup, timers something must clear,
+  document listeners needing unbinding, responses arriving after cancel or
+  unmount), the verdict-and-ask-on-ties rule, and the named ownership-guard tools.
+  His practitioner review supplied the new-machine criteria, and his diagram
+  policy — regenerate on every machine change rather than on request — is matched
+  here. No content vendored; full attribution in `skills/REFERENCES.md`.
+
+## 4.11.0
+
+### Minor Changes
+
+- 89225f6: Replace the legacy PR machinery with two new skills: graph-engineering and panel-review
+
+  `graph-engineering` is a generic multi-agent orchestration skill: compose any
+  installed skills into one agent graph where each node is a sub-agent that loads
+  exactly one skill, edges carry schema-shaped data, and stages fan out,
+  adversarially verify, and synthesize. It documents the node-brief discipline
+  (one skill, one bounded scope, structured output with file:line evidence), a
+  topology catalog (fan-out/fan-in, pipeline vs barrier, adversarial verify,
+  judge panel, loop-until-dry, completeness critic), and three execution runtimes
+  (the Workflow tool's dynamic workflows preferred, Agent-tool fan-out, labelled
+  sequential degraded mode). Grounded in Anthropic's orchestrator-workers and
+  multi-agent research-system guidance, ultrareview's per-finding verification,
+  and LangGraph's agent-graph vocabulary; the skills-as-nodes mechanic was
+  verified live against this distribution.
+
+  Beyond read-mostly analysis graphs, graph-engineering also covers dependent
+  _write_ work, adapting mintuz's graph-engineering skill (MIT, credited in
+  skills/REFERENCES.md): a typed edge taxonomy (`needs` releases only on
+  verified-and-integrated, `informs` never blocks, `excludes` bars co-running),
+  frontier scheduling with writes-serial-by-default and four explicit
+  concurrency conditions, a structured write-node handoff (real exit codes —
+  a claimed check is not a check; all-empty honesty signal), a repair loop that
+  sends the largest gap back to the context-holding worker and judges with a
+  fresh verifier, static-vs-behavioral verification lanes
+  (tests-written-alongside-implementation as weakest evidence), a Mermaid
+  render-and-approve gate before dispatching write graphs, one-workflow-per-
+  checkpoint execution, and what the Workflow runtime does not enforce
+  (integration, exclusion, approval).
+
+  `panel-review` is the flagship instance: a composable multi-agent code review of any change boundary — working tree, branch, stacked layer, or PR —
+  invoked as `/panel-review [target] [lens...]` where every review lens is an installed
+  skill (hexagonal-architecture, domain-driven-design, structure-codebase, ...).
+  Defaults plus project-trait auto-detection, `only`/remove/`thorough`/`post`
+  modifiers, one sub-agent per lens with isolated context, adversarial
+  per-finding verification (unverifiable ≠ refuted), cross-lens conflict
+  surfacing, and one severity-ranked report with explicit clean/not-covered
+  accounting. The skill is deliberately named `panel-review`, not
+  `pr-review`: a PR is one kind of target, not a precondition — a `wip` token
+  reviews uncommitted work mid-development, and the built-in `readiness` lens
+  runs only for boundaries actually heading to a PR. It also owns the
+  PR-readiness evidence gate (`references/pr-readiness.md`): per-path change
+  classification (each changed path classified by every applicable type; mixed
+  PRs may use several; no ceremonial fields for gates a path type does not own)
+  and the mutation-evidence freshness model carried over from the retired PR
+  machinery, plus a finding-discipline section (ownership-based mutation
+  findings, adapter-aware console findings, contract-based `readonly`) ported
+  from the retired reviewer agent.
+
+  Removed: the `pr-reviewer` agent, the `/generate-pr-review` command, and the
+  `/pr` command (PR creation is now ordinary agent-led work gated by the
+  pr-readiness reference). All cross-references updated: CLAUDE.md routing and
+  skills list, README catalogs and counts (3 commands, 9 agents), agents/README,
+  sibling agent descriptions, /setup generation steps, double-check, tdd,
+  planning, install-claude.sh arrays, and the mutation-workflow/tdd-watch test
+  assertions now point at the panel-review skill's pr-readiness reference.
+
+  Note for existing installs: the installer no longer ships the removed files but
+  does not delete previously installed copies of ~/.claude/commands/pr.md,
+  ~/.claude/commands/generate-pr-review.md, ~/.claude/agents/pr-reviewer.md, or
+  their OpenCode mirrors — remove them manually if present.
+
+### Patch Changes
+
+- a74faec: Fix skill installation failing with "Remote branch <sha> not found in upstream
+  origin". The pinned Skills CLI clones `repo#<ref>` sources with
+  `git clone --branch`, which only accepts branch or tag names, so every
+  commit-pinned source added by the install hardening could never clone. The
+  installer now rewrites commit pins to GitHub commit-archive tarball URLs,
+  which the CLI downloads and installs without cloning while keeping the same
+  immutable revision.
+- c0094a0: Raise the Skills CLI download cap so large pinned sources install
+
+  The Skills CLI refuses source downloads larger than 10MB, and several pinned
+  community skill sources (impeccable, herdr, next-skills) ship archives above
+  that, failing the install. The installer now sets
+  `SKILLS_DOWNLOAD_MAX_BYTES=104857600` (100MB) for its Skills CLI invocations,
+  while an explicit caller-provided cap still wins.
+
+## 4.10.0
+
+### Minor Changes
+
+- 5b5db3b: Harden the double-check skill: mandatory scope-fidelity checks,
+  acceptance-review at the pre-PR phase, and research-backed reviewer-bias
+  mitigations
+
+  Motivated by real reviews where an agent took clear requirements and silently
+  removed features that were not asked for, added things that were not asked
+  for, and even deleted the tests that were keeping those features in place —
+  while the remaining code still looked correct.
+
+  Every double-check review must now compare the finished work against the
+  original scope and affirmatively report three outcomes in every round:
+
+  - **Unrequested additions** — features, behaviors, endpoints, options,
+    dependencies, or configuration present in the work but absent from the scope.
+  - **Unrequested removals** — required or pre-existing features, behaviors,
+    error handling, or guarantees now missing or weakened without the scope
+    asking for it.
+  - **Removed or weakened tests** — the reviewer diffs test files directly,
+    enumerates every deleted, skipped, or loosened test, and judges each against
+    the original scope; a test removed to let an unrequested behavior change
+    pass silently is a blocker.
+
+  Behavior-preserving refactoring is explicitly not scope drift: refactoring
+  touched code is expected as part of finished work, judged on justification and
+  behavior preservation rather than on whether it was requested, and the
+  reviewer also flags valuable refactoring opportunities the work missed (per
+  the `refactoring` and `reduce-system-complexity` skills where installed). A
+  claimed refactor that changes observable behavior is judged under the
+  addition/removal checks instead.
+
+  Double-check is now phase-aware about the vendored `acceptance-review` skill:
+  when the work under review is finished implementation approaching a PR and an
+  authoritative requirements artifact exists, it also runs `acceptance-review`
+  against that artifact as part of the same gate, reporting the two verdicts
+  separately; for earlier-phase work (plans, designs, mid-cycle code) a general
+  second opinion alone applies. Scope fidelity and acceptance-review are
+  explicitly complementary — one proves the contract's criteria are satisfied,
+  the other catches work outside the contract.
+
+  Research-backed mitigations for documented LLM-reviewer failure modes:
+
+  - **Anti-capitulation protocol** — the host presents rebuttals as evidence at
+    a file and line, never as a desired disposition; a finding closes only when
+    the reviewer restates its strongest surviving form and names the evidence
+    that defeated it, and deference-only withdrawals stay open.
+  - **Mandatory coverage statement** — every response lists what was read and
+    run plus an explicit not-checked list, turning `no-issues` from a global
+    claim into a bounded, auditable one.
+  - **Evidence tiers** — each finding is tagged `executed`, `read`, or
+    `inferred`; read-only is clarified to permit safe non-destructive checks
+    (tests, typecheck, build), and `no-issues` is not accepted while the
+    riskiest claims rest on inference alone.
+  - **Severity anchors** — `blocker`/`major`/`minor`/`nit` defined by impact if
+    shipped, never effort-to-fix or reviewer certainty.
+  - **Fix-diff sweep** — the final round reviews the fixes themselves as fresh
+    unreviewed code, not just the ledger.
+  - **Per-claim dispositions** — the named claim and each scrutinize-hardest
+    area gets an explicit `holds`/`broken`/`could not verify` line.
+  - **Secret-echo prohibition** — the reviewer references credentials by
+    location only and reports exposure as a finding, never quoting values.
+
+  The verifier brief gains an "Original scope" section (the authoritative
+  requirements, verbatim or by exact reference) and a mandatory scope-fidelity
+  check section; responses must include three explicit scope-fidelity outcome
+  lines, and `VERDICT: no-issues` is invalid without a clean result on all
+  three. New anti-patterns cover reviewing only changed-code correctness while
+  ignoring scope drift, and accepting a test deletion because the covered code
+  was also deleted without checking the deletion itself was in scope.
+
+## 4.9.2
+
+### Patch Changes
+
+- 7e77a8b: Make repeat skill installs frictionless by backing up selected destinations
+  before the pinned Skills CLI refreshes them.
+
+## 4.9.1
+
+### Patch Changes
+
+- 8f1ebbc: Audit every canonical skill and correct architecture ownership, test evidence,
+  security examples, documentation lifecycle, provider neutrality, and
+  project-local policy. Add focused `acceptance-review` and `debugging` skills for
+  gaps not covered by the existing stack, without introducing Spec Kit or other
+  speculative frameworks.
+
+## 4.9.0
+
+### Minor Changes
+
+- ad9f60c: Add the `wtf` skill for explicitly re-explaining the previous model response in plain UK English.
+
+## 4.8.2
+
+### Patch Changes
+
+- 094c38b: Require GitHub-native pull request stacks to be created and verified remotely instead of inferring them from dependent branch bases.
+
+## 4.8.1
+
+### Patch Changes
+
+- 90c8538: Stow the herdr package from install.sh, backing up any existing config first
+
+  The `herdr` package was added to the repo but `install.sh` never stowed it, so
+  the standalone install path silently skipped it while the Ansible path picked it
+  up. Add it to the stow list.
+
+  It also needs the same `move_with_backup` treatment as `.zshrc`, the ghostty
+  config, and the opencode config. GNU stow refuses to overwrite a real file and
+  aborts the entire invocation rather than skipping the one package, so a
+  pre-existing `~/.config/herdr/config.toml` would have stopped every other package
+  from stowing too.
+
+## 4.8.0
+
+### Minor Changes
+
+- cb0c63c: Add Herdr terminal workspace support
+
+  Herdr (https://herdr.dev) is a tmux-style terminal workspace manager that tracks
+  each coding agent's state — working, blocked, idle — in a sidebar, which is what
+  makes several concurrent agents legible at a glance.
+
+  Two additions:
+
+  - **New `herdr` stow package** holding `~/.config/herdr/config.toml`, so the
+    hand-authored Herdr configuration is captured rather than living only on one
+    machine. Currently sorts the agent sidebar as an attention queue.
+  - **The `herdr` skill** from [herdrdev/herdr](https://skills.sh/herdrdev/herdr)
+    is now installed for every target agent alongside the other external sources.
+    It lets an agent drive the workspace it is running inside: split a pane, run a
+    command in it, read the output back, and wait on a sibling agent without
+    stealing focus. `--no-external` opts out along with the other community skills.
+
+  The per-agent state integrations that feed the sidebar are installed separately
+  by mac-dev-machine-setup (`make herdr`), because the hook scripts are versioned
+  with the herdr binary rather than checked in here.
+
+## 4.7.0
+
+### Minor Changes
+
+- edf5519: Add a stack-pull-requests skill that keeps story splitting vertical while making dependency-ordered PR stacks an optional, tested delivery tactic.
+
+## 4.6.1
+
+### Patch Changes
+
+- e704398: Harden Vitest watcher guidance around exact-command proofs, negative affected-test controls,
+  headless polling evidence, repository-owned start timing, and cleanup after child-process
+  failures.
+
+## 4.6.0
+
+### Minor Changes
+
+- 25a61d5: Teach TDD and related testing skills to prefer proven repository-owned watchers, describe Vitest's diff-selected initial execution and retained-graph behavior accurately, require live version/configuration proof, clean up watcher process groups, reject hanging automation and empty evidence, preserve monorepo consumers, and complete the full repository suite before PR.
+
+## 4.5.0
+
+### Minor Changes
+
+- 58b2dbe: Keep mutation-aware test design in RED while moving the automated harness to one end-of-phase PR-readiness gate over the accumulated change. Survivor handling still starts with a failing test, and focused or diff-based reruns remain available inside that final gate.
+
+## 4.4.0
+
+### Minor Changes
+
+- c16a620: testing + front-end-testing: honest Playwright E2E evidence. The general testing skill's "Test Through Public API Only" is now "Test Through the Subject's Public Interface" with a claim→interface table — an HTTP endpoint can be public and still be the wrong interface for a browser claim. front-end-testing gains a routed deep dive (`resources/playwright-e2e.md`): the user-action/automatic-work/direct-call decision rule, an evidence-boundary table, safe request observation (listener before the action, precise method+path predicates, rendered-outcome assertions), a direct-transport audit procedure with a seven-field ledger, false-browser-confidence anti-patterns (page.request journeys, page.evaluate(fetch), forged Sec-Fetch-\*/Origin headers), honest fixture/readiness/diagnostic/deployment roles, and an auth/lifecycle evidence contract routed to secure-oauth-oidc and bff-entry-points.
+
+## 4.3.0
+
+### Minor Changes
+
+- 50d245d: Install the ponytail plugin (https://ponytail.dev) for Claude Code and Codex as part of install-claude.sh. The installer registers the DietrichGebert/ponytail marketplace and installs the plugin via each agent's CLI, skipping gracefully when a CLI is not installed. Opt out with --no-ponytail.
+
+## 4.2.0
+
+### Minor Changes
+
+- b270db1: Add bff-entry-points skill for designing and protecting BFF/backend HTTP entry points
+
+  New skill teaching an explicit public/protected access classification for every
+  production entry point, a composition-prepared endpoint registrar that installs
+  session, Origin, Fetch Metadata, CSRF, and content-type policy by construction,
+  provider-free authorization inside the application (`AuthenticatedPrincipal`),
+  protected SSE and raw WebSocket upgrade registration, a single browser-side
+  authentication coordinator, and automated enforcement gates driven by a derived
+  entry catalog. Includes six deep-dive references (endpoint protection, hexagonal
+  auth boundaries, realtime entry points, browser session coordination, enforcement
+  and testing, and a concrete Hono example) grounded in current primary sources
+  (RFC 9700/BCP 240, draft-ietf-oauth-browser-based-apps, OWASP ASVS 5.0 and
+  cheat sheets, RFC 9110/9457, WHATWG specs).
+
+  Cross-references added from api-design, secure-oauth-oidc, structure-codebase,
+  and hexagonal-architecture (cross-cutting-concerns), plus registration in
+  CLAUDE.md and the README skills catalog. structure-codebase's Endpoint-First
+  BFF grammar now requires an explicit access classification on every endpoint
+  leaf (registrar-mounted, raw upgrades included) and flags unclassified or
+  catalog-bypassing production endpoints as an anti-pattern, delegating the
+  behavioral model to bff-entry-points.
+
+- fb59fa3: Add bff-design skill for the backend-for-frontend pattern itself
+
+  Companion to bff-entry-points: where that skill protects the BFF's boundary,
+  this one owns the pattern-level decisions — whether a system needs a BFF and
+  how many (adoption signals, one-experience-one-BFF granularity, frontend-team
+  ownership, honest deployable costs incl. the modular-monolith option), the
+  shape-don't-decide rule with the duplication push-down ladder, upstream
+  aggregation with partial-failure contracts and resilience budgets (deadline
+  propagation, one retry owner per edge, bulkheads, identity-keyed caching),
+  mediating user identity toward upstream services (RFC 8693 token exchange,
+  confused-deputy prevention, phantom-token layering, revocation propagation),
+  and the alternatives (shared gateway, GraphQL federation, token-mediating
+  backend, direct SPA→API, meta-framework server as BFF). Four deep-dive
+  references grounded in primary sources (Newman/Calçado/SoundCloud lineage,
+  Azure Architecture Center, IETF drafts and RFCs, Google SRE, AWS Builders
+  Library, Netflix, OWASP).
+
+  Mutual routing added between bff-design, bff-entry-points, structure-codebase,
+  and api-design (including the single-consumer versioning nuance), plus
+  registration in CLAUDE.md and the README skills catalog.
+
 ## 4.1.0
 
 ### Minor Changes
@@ -35,7 +635,7 @@
 
 - 9f84fd9: Add a `technical-writing` skill: developer-facing prose that can be skimmed first and trusted enough to finish.
 
-  Adapted from Adam Bradley's Developer Writing Playbook (credited) and extended with deep-researched, fully-cited resources: one-mode-per-page as the leading rule (Diátaxis's four modes with the tutorial/how-to distinction most docs miss, plus the model's honest limits), the README cognitive funnel with the short-vs-long tension resolved and README-driven development's failure mode named, a docs-quality enforcement ladder (Vale prose lint, executable examples, link checking, reference generated from spec, friction logs, Google's timeless-docs rule, Every Page is Page One), and an honest 2026 guide to documentation for AI agents (the llms.txt adoption reality, markdown endpoints, RAG-chunkable structure as good-writing-restated). House principles throughout: claims need receipts, docs are verified behavior, idle states must speak, enumerable facts in tables with exact copy-pasteable strings.
+  Adapted from Adam Bulmer's MIT-licensed Developer Writing Playbook and formatting guide at pinned upstream snapshot `280c0152`, with the complete notice now preserved, and extended with deep-researched, fully-cited resources: one-mode-per-page as the leading rule (Diátaxis's four modes with the tutorial/how-to distinction most docs miss, plus the model's honest limits), the README cognitive funnel with the short-vs-long tension resolved and README-driven development's failure mode named, a docs-quality enforcement ladder (Vale prose lint, executable examples, link checking, reference generated from spec, friction logs, Google's timeless-docs rule, Every Page is Page One), and an honest 2026 guide to documentation for AI agents (the llms.txt adoption reality, markdown endpoints, RAG-chunkable structure as good-writing-restated). House principles throughout: claims need receipts, docs are verified behavior, idle states must speak, enumerable facts in tables with exact copy-pasteable strings.
 
 ## 3.42.0
 
@@ -390,7 +990,7 @@
   - Presents options with install commands and links; offers to install with `npx skills add <owner/repo@skill> -g -y`
   - Falls back to direct help or suggesting `npx skills init` when no skill matches
 
-  **Licensing:** Vendored under MIT. The upstream repository declares MIT in its `package.json` and README but does not ship a root `LICENSE` file, so a reproduced MIT notice is included at `claude/.claude/skills/find-skills/LICENSE` to preserve attribution. The install script downloads both `SKILL.md` and `LICENSE`.
+  **Licensing:** At imported revision `0b8fb22`, upstream declared MIT in its `package.json` and README but supplied no root `LICENSE` or complete copyright notice. The local bundle now preserves the exact `Copyright (c) 2026 Vercel, Inc.` MIT notice later added upstream in `e173b8c`; source notes keep the two evidence points distinct.
 
 ### Patch Changes
 
@@ -501,7 +1101,10 @@
   - Consolidates 15 upstream skills into 1 directory with 8 reference files
   - PlantUML reference covers UML, cloud (AWS/Azure/GCP), network, security, ArchiMate, BPMN, data analytics, and IoT
   - Includes examples file with 15 rendered diagram samples
-  - Adapted from markdown-viewer/skills (MIT license) with proper attribution
+  - Consolidated from `markdown-viewer/skills` snapshot `2da9334`. Historical
+    correction: its README declared MIT, but no full copyright/permission
+    notice existed; the unsupported locally constructed notice was removed
+    and upstream confirmation remains required.
 
 ## 3.19.3
 
@@ -1007,7 +1610,7 @@
   - Manual invocation: `/test-design-reviewer path/to/tests`
   - Contextual analysis: "Are these tests maintainable?"
 
-  **Attribution:** This skill is adapted from [Andrea Laforgia's claude-code-agents repository](https://github.com/andlaf-ak/claude-code-agents/blob/main/test-design-reviewer.md). Special thanks to Andrea for creating and sharing this comprehensive test design review framework.
+  **Historical provenance correction (2026-08-08):** this version copied [Andrea Laforgia's `test-design-reviewer.md` at `278e367`](https://github.com/andrealaforgia/claude-code-agents/blob/278e367057bbe4a57255870e0a30b9d0a6eabc59/test-design-reviewer.md). No public redistribution license was found for that revision. The current skill is a clean rewrite; pinned evidence and the unresolved older-release permission gap live in its source notes.
 
   **Documentation updates:**
 
@@ -1586,7 +2189,11 @@
 
   Added a new agent that analyzes how user-facing use cases map to underlying data access patterns and architectural implementation in the codebase. This agent helps developers understand existing patterns before implementing new features.
 
-  This agent is adapted from [Kieran O'Hara's dotfiles](https://github.com/kieran-ohara/dotfiles/blob/main/config/claude/agents/analyse-use-case-to-data-patterns.md). Thank you to Kieran O'Hara for creating and sharing this excellent agent specification.
+  Historical note corrected in 2026: this revision copied
+  [Kieran O'Hara's agent at `f735349`](https://github.com/kieran-ohara/dotfiles/blob/f7353498be9a2a846faae10dbdb771dfd2af6c7e/config/claude/agents/analyse-use-case-to-data-patterns.md),
+  but no public redistribution licence was found. The current agent has since
+  been independently rewritten; its source notes preserve the exact evidence
+  and unresolved historical permission issue.
 
   Key features:
 

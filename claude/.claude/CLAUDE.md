@@ -1,11 +1,11 @@
 # Development Guidelines for Claude
 
-> **About this file (v3.0.0):** Lean version optimized for context efficiency. Core principles here; detailed patterns loaded on-demand via skills.
+> **About this file:** v3 architecture generation from the current 4.9.0 package. Core principles live here; detailed patterns load on demand via skills.
 >
 > **Architecture:**
 > - **CLAUDE.md** (this file): Core philosophy + quick reference (~160 lines, always loaded)
-> - **Skills**: Detailed patterns loaded on-demand (specification, ubiquitous-language, tdd, testing, mutation-testing, test-design-reviewer, typescript-strict, functional, refactoring, reduce-system-complexity, expectations, planning, story-splitting, front-end-testing, react-testing, ci-debugging, hexagonal-architecture, domain-driven-design, event-sourcing, twelve-factor, api-design, cli-design, codebase-design, improve-codebase-architecture, structure-codebase, evaluate-existing-solutions, finding-seams, characterisation-tests, production-parity-skill-builder, storyboard, teach-me, diagrams, technical-writing, find-skills, find-gaps, double-check)
-> - **External skills**: Loaded on-demand from community repos (impeccable + 17 steering commands from [pbakaus/impeccable](https://github.com/pbakaus/impeccable), 6 web quality skills from [addyosmani/web-quality-skills](https://github.com/addyosmani/web-quality-skills), 3 Next.js skills from [vercel-labs/next-skills](https://skills.sh/vercel-labs/next-skills), grill-me from [mattpocock/skills](https://skills.sh/mattpocock/skills/grill-me), seo-audit from [coreyhaines31/marketingskills](https://skills.sh/coreyhaines31/marketingskills/seo-audit))
+> - **Skills**: Detailed patterns loaded on-demand (specification, ubiquitous-language, planning, story-splitting, stack-pull-requests, acceptance-review, debugging, ci-debugging, tdd, testing, mutation-testing, test-design-reviewer, typescript-strict, functional, refactoring, reduce-system-complexity, expectations, front-end-testing, react-testing, react-performance, xstate, render-code-shape, hexagonal-architecture, domain-driven-design, event-sourcing, twelve-factor, api-design, secure-oauth-oidc, bff-design, bff-entry-points, cli-design, codebase-design, improve-codebase-architecture, structure-codebase, evaluate-existing-solutions, finding-seams, characterisation-tests, production-parity-skill-builder, storyboard, teach-me, diagrams, technical-writing, find-skills, find-gaps, double-check, graph-engineering, review)
+> - **External skills**: Loaded on-demand from community repos (impeccable + 17 steering commands from [pbakaus/impeccable](https://github.com/pbakaus/impeccable), 6 web quality skills from [addyosmani/web-quality-skills](https://github.com/addyosmani/web-quality-skills), 2 Next.js Cache Components skills from [vercel/next.js](https://github.com/vercel/next.js/tree/canary/skills), React performance and composition rule catalogues from [vercel-labs/agent-skills](https://skills.sh/vercel-labs/agent-skills), grill-me and writing-for-agents from [mattpocock/skills](https://skills.sh/mattpocock/skills), skill-creator from [anthropics/skills](https://github.com/anthropics/skills), seo-audit from [coreyhaines31/marketingskills](https://skills.sh/coreyhaines31/marketingskills/seo-audit))
 > - **Agents**: Specialized subprocesses for verification and analysis
 >
 > **Previous versions:**
@@ -18,49 +18,56 @@
 
 I follow Test-Driven Development (TDD) with a strong emphasis on behavior-driven testing and functional programming principles. All work should be done in small, incremental changes that maintain a working state throughout development.
 
+For mutation-testing cadence, a **phase of work** means one PR review boundary. Normally that is one PR-sized, independently mergeable slice; in a cross-slice stack it is one whole-slice member, and in an intra-slice stack it is one focused dependent layer. It does not mean a multi-PR feature/stack as a whole or the numbered lifecycle phases in `README.md`.
+
 ## Quick Reference
 
 **Key Principles:**
 
 - Write behavior tests first for new or changed behavior (TDD)
 - Test behavior, not implementation
-- No `any` types or type assertions
-- Immutable data only
-- Small, pure functions
+- No unexplained `any`; contain unavoidable interop and justify assertions
+- Prefer immutable values and pure logic; isolate necessary mutation and effects
+- Cohesive functions behind stable module contracts
 - TypeScript strict mode always
-- Use real schemas/types in tests, never redefine them
+- Reuse an existing production schema when it adds test evidence; do not
+  redefine the same contract
 
 **Preferred Tools:**
 
 - **Language**: TypeScript (strict mode)
-- **Testing**: Vitest (prefer Browser Mode for UI tests) + Testing Library
+- **Testing**: Follow the repository harness; prefer real-browser evidence
+  when the claim depends on browser behaviour and the cost is justified
 - **State Management**: Prefer immutable patterns
 
 ## Testing Principles
 
-**Core principle**: Test behavior, not implementation. 100% coverage through business behavior.
+**Core principle**: Test behavior, not implementation. Cover changed and
+high-risk behavior proportionately; a coverage percentage is not proof.
 
 **Quick reference:**
 - Write behavior tests first for new or changed behavior (TDD non-negotiable)
-- Test through public API exclusively
-- Use factory functions for test data (no `let`/`beforeEach`)
+- Test through the subject's public interface at the layer the claim names (an HTTP endpoint is the wrong interface for a browser claim)
+- Use factories for repeated or nested test data; isolated lifecycle hooks and
+  clear one-off values are valid
 - Tests must document expected business behavior
-- No 1:1 mapping between test files and implementation files
+- Organize tests around behavior and repository ownership, not a universal
+  file-count rule
 
 For detailed testing patterns and examples, load the `testing` skill.
-For verifying test effectiveness through mutation analysis, load the `mutation-testing` skill.
+For verifying test effectiveness through mutation analysis, load the `mutation-testing` skill at the end-of-phase PR-readiness gate; use its mutator rules earlier for cheap test-design guidance without running the automated harness.
 
 ## TypeScript Guidelines
 
 **Core principle**: Strict mode always. Schema-first at trust boundaries, types for internal logic.
 
 **Quick reference:**
-- No `any` types - ever (use `unknown` if type truly unknown)
+- No unexplained `any`; use `unknown` at untrusted boundaries and contain
+  unavoidable interop
 - No type assertions without justification
-- Prefer `type` over `interface` for data structures
-- Reserve `interface` for behavior contracts only
-- Define schemas first, derive types from them (Zod/Standard Schema)
-- Use schemas at trust boundaries, plain types for internal logic
+- Follow repository convention for `type`/`interface`, then language semantics
+- Define schemas at runtime trust boundaries and derive types from them
+- Use plain types, smart constructors, or domain values for trusted internal logic
 
 For detailed TypeScript patterns and rationale, load the `typescript-strict` skill.
 For API and interface design patterns, load the `api-design` skill.
@@ -68,51 +75,64 @@ For OAuth 2.0 or OpenID Connect design, implementation, review, testing, inciden
 
 ## Code Style
 
-**Core principle**: Functional programming with immutable data. Self-documenting code.
+**Core principle**: Prefer immutable data and pure logic where they make
+behavior easier to reason about; keep necessary effects explicit.
 
 **Quick reference:**
-- No data mutation - immutable data structures only
+- Prefer immutable values; contain mutation where a boundary, library, or
+  measured performance need requires it
 - Pure functions wherever possible
-- No nested if/else - use early returns or composition
-- No comments - code should be self-documenting
-- Prefer options objects over positional parameters
-- Use array methods (`map`, `filter`, `reduce`) over loops
+- Use early returns or composition when they make branching clearer
+- Use comments for non-obvious why, constraints, and safety context
+- Use an options object when positional parameters are ambiguous or unstable
+- Choose array methods or loops by clarity, control flow, and measured needs
 - Compose small private functions behind cohesive, stable module contracts; do not equate one helper with one public module
 
 For detailed patterns and examples, load the `functional` skill.
 
 ## Development Workflow
 
-**Core principle**: RED-GREEN with mutation or reviewed alternate evidence, conditional mutant handling, and refactoring when applicable, in small known-good increments. TDD is the fundamental practice for changed behavior.
+**Core principle**: Use fast RED-GREEN-REFACTOR increments for changed behavior. Run mutation testing or review alternate evidence once at the end-of-phase PR-readiness gate, after implementation and refactoring are complete.
 
 **Quick reference:**
 - RED: Write a failing behavior test before new or changed behavior
 - GREEN: Write MINIMUM code to pass test
-- MUTATE OR ALTERNATE EVIDENCE: Run mutation testing where meaningful; otherwise record `N/A` plus proportionate reachability, configuration, contract, integration, or operational evidence
-- KILL MUTANTS: Address surviving mutants when mutation testing applies (ask human when value is ambiguous)
-- REFACTOR OR REDUCE: Assess improvement opportunities only when the applicable skill and preservation evidence support the change
+- REFACTOR OR REDUCE: Assess applicable improvements while ordinary behavior tests stay green
+- REPEAT: Continue the inner cycle without running the automated mutation harness after each increment, refactor, or commit
+- PRE-PR MUTATION GATE: When the phase is otherwise ready for a PR, run mutation testing once for the accumulated scope where meaningful; otherwise record `N/A` plus proportionate reachability, configuration, contract, integration, or operational evidence
+- KILL MUTANTS: During that gate, address valuable survivors and re-run focused/diff mutation checks as part of the same gate (ask the human when value is ambiguous)
 - **Wait for commit approval** before every commit
 - Each increment leaves codebase in working state
 For detailed TDD workflow, load the `tdd` skill.
-For a behavior-changing planned slice, load `tdd`, `testing`, `mutation-testing`, and `refactoring` before code changes begin. For a pure behavior-preserving refactor/reduction, load only the applicable testing, mutation-testing, refactoring, and reduction skills; load `reduce-system-complexity` when net mechanism removal is claimed, and record why any other skill is `N/A`. Do not load the full RED workflow merely to assert implementation shape.
+For a behavior-changing planned slice, load `tdd`, `testing`, and applicable refactoring guidance before code changes begin. Use the `mutation-testing` skill's mutator rules for cheap test-design guidance, but do not run its harness until the end-of-phase PR-readiness gate. For a pure behavior-preserving refactor/reduction, load only the applicable testing, refactoring, and reduction skills during implementation, then apply mutation testing or alternate evidence at the same PR gate; load `reduce-system-complexity` when net mechanism removal is claimed, and record why any other skill is `N/A`. Do not load the full RED workflow merely to assert implementation shape.
 For refactoring methodology, load the `refactoring` skill.
 For removing total branches, states, dependencies, layers, flags, retries, jobs, or operational moving parts from a selected existing path while conserving behavior, load the `reduce-system-complexity` skill. Pure reductions use the verified REFACTOR path, not a fabricated structural RED test.
-For fuzzy product/design decisions, load `grill-me` to pressure-test the decision tree before writing stories or plans.
-For turning fuzzy intent into shared understanding and acceptance criteria — specification as a conversation, agent round first, then a real three-amigos round — load the `specification` skill.
+For fuzzy product/design decisions, load `grill-me` when installed; otherwise
+use the host's one-question mechanism or `specification` to pressure-test the
+decision tree before writing stories or plans.
+For turning fuzzy intent into shared understanding and acceptance criteria — agent-facilitated draft followed by accountable, risk-proportionate human review — load the `specification` skill.
 For naming domain concepts, glossary work, or any new/changed domain term — the five-step language protocol, never silent coinage — load the `ubiquitous-language` skill.
 For broad stories, epics, features, or backlog items, load `story-splitting` to create child stories before planning.
 For tightening an existing story, plan, acceptance criteria set, or mock spec, load `find-gaps` to write confirmed answers back into the artifact.
-For significant implementation work, load `planning` to turn one selected child story or narrow capability into PR-sized plans in `plans/`.
+For significant implementation work, load `planning` to turn one selected child story or narrow capability into the repository's declared planning workflow and location; use `plans/` only as the documented fallback.
+When one planned vertical slice may be too large for review, or later slices should start on the same evolving baseline before lower PRs merge, load `stack-pull-requests` with `planning` to choose independent PRs or an explicit hard-/flow-lineage stack without turning technical layers into stories or slices.
 For CI failure diagnosis, load the `ci-debugging` skill.
+For local or runtime failure diagnosis, load `debugging` to preserve evidence, localize one causal hypothesis at a time, and fix the earliest shared owning boundary when a fix is requested.
+For a read-only decision on whether finished implementation satisfies an authoritative requirement, load `acceptance-review` and report every criterion plus its evidence and exact verdict.
 For hexagonal architecture projects, load the `hexagonal-architecture` skill.
 For Domain-Driven Design projects, load the `domain-driven-design` skill.
 For event-sourced systems or bounded contexts (events as the source of truth, the Decider write model, event stores, projections and read models, event versioning, snapshots), load the `event-sourcing` skill.
 For 12-factor service projects, load the `twelve-factor` skill.
 For production observability (wide events, OpenTelemetry, SLOs/alerting, telemetry testing), load the `observability` skill.
 For CLI tool design (stream separation, format flags, exit codes, composability), load the `cli-design` skill.
+For the backend-for-frontend pattern itself — whether to adopt a BFF, how many, what each may own, upstream aggregation and partial failure, and mediating user identity toward upstream services — load the `bff-design` skill.
+For browser-facing BFF or backend HTTP entry points — public/protected access classification, authentication middleware, session cookies, CSRF/Origin policy, protected SSE/WebSocket registration, and endpoint-protection enforcement — load the `bff-entry-points` skill.
 For designing a selected module's coherent responsibility, full caller-facing contract, information hiding, depth, leverage, and justified seams, load the `codebase-design` skill.
+For a read-only render of how code composes — entry points, module boundaries, the types crossing them, signatures, and a cited call graph per wiring, with `[NEW]` marking work not yet built — load the `render-code-shape` skill. Use it to understand an unfamiliar path or to pseudocode a change before implementing it; it never authorizes the edit.
 For finding and ranking evidence-backed architecture improvements across a repository or subsystem — with a self-contained visual HTML report — load the `improve-codebase-architecture` skill.
 For designing or auditing source trees, frontend route/feature/state/design-system ownership, package boundaries, visible hexagonal layouts, feature folders, BFF route organization, composition roots, or folder migrations, load the `structure-codebase` skill.
+For front-end flow logic, load the `xstate` skill — and load it *before* reaching for `useState`, not only when a file already imports xstate. Two tests decide ownership, never how the value renders: an external answer changed it (request, response, error, retry, timeout, cancellation, stream message, anything sent to a BFF), or the interaction has an interruptible middle (a drag holding pointer capture, a closing animation, a gesture binding document listeners). A disabled button or spinner is the presentation *of* temporal state. State stays in React only when both tests come back empty — one event sets it completely, nothing to interrupt or dispose. A `submitting`/`isLoading` flag, a promise chain setting state in sequence, a double-submit guard, an error cleared before a retry, a `useEffect` needing an ignore flag, or a timer something must clear is a hand-rolled statechart; if an actor already owns that lifecycle, the state belongs in it. Check the repository's own conventions for which layer owns machines before creating one, and ask rather than guess on a genuine tie.
+For React or Next.js performance work, load the `react-performance` skill: baseline the symptom, attribute the cost with evidence, apply one rule at a time from the pinned `vercel-react-best-practices` catalogue, then re-measure. Behavior tests stay unchanged and green; immutability and typing rules are not traded for speed, and unmeasured optimizations are reverted rather than kept.
 Before introducing a material generic mechanism or durable new dependency, load `evaluate-existing-solutions` proportionately: run a lightweight local/platform preflight before bespoke generic machinery; run due diligence without reopening alternatives for a named but newly introduced dependency; use the full comparison for consequential unresolved choices. Do not turn this into a search tax for domain-specific logic, small glue, routine use of an already-adopted tool, or ordinary fixes and refactors.
 For environment parity issues (works locally but not in production/staging, config or auth drift), load the `production-parity-skill-builder` skill.
 For making untestable code testable, load the `finding-seams` skill.
@@ -120,18 +140,26 @@ For documenting existing behavior before changes, load the `characterisation-tes
 For multi-surface design audits before code (embed every mock in a scope on one reviewable page with flow diagram + gap cards + per-mock audit checklists), load the `storyboard` skill.
 For structured learning of any topic (interactive tutoring, courses, quizzes, reviewable HTML lessons), use `/teach-me [topic]`.
 For developer-facing prose — READMEs, guides, tutorials, reference docs, proposals, release notes — load the `technical-writing` skill (reader-first structure, falsifiable claims, agent-readable reference shape).
+For documents an *agent* consumes rather than a human — a SKILL.md, `CLAUDE.md`/`AGENTS.md`, or a doc reached by a pointer — load `writing-for-agents` when installed: context pointers and trigger wording, the context/cognitive load split, the information hierarchy and progressive disclosure, and completion criteria that resist premature completion. Route by audience, not by file type: `technical-writing` owns human-facing prose, `writing-for-agents` owns agent-facing instruction.
+For authoring, restructuring, evaluating, or benchmarking a skill itself — drafting from scratch, running evals over test prompts, or tuning a description for trigger accuracy — load `skill-creator` when installed. Use `writing-for-agents` for how the words should read and `skill-creator` for the authoring and measurement loop around them.
 For discovering and installing agent skills from the open ecosystem (`npx skills`), load the `find-skills` skill.
 For adversarial review of plans, acceptance criteria, stories, or design mocks — one question at a time, turning each answer into a new AC / plan paragraph / mock-state spec written back to the source of truth — load the `find-gaps` skill.
-For relentless decision-tree interrogation before story splitting, planning, or implementation — one question at a time, with recommended answers and codebase exploration where useful — load the `grill-me` skill.
-For an independent second opinion on finished work — spinning up a *different* AI provider's CLI agent (codex/claude/gemini/cursor-agent) at its best model and effort, then arguing constructively until both agents genuinely agree — load the `double-check` skill.
+For relentless decision-tree interrogation before story splitting, planning, or implementation, load `grill-me` when installed; otherwise use `specification` or the host's one-question mechanism.
+For a rigorous second opinion on finished work, load `double-check`. It selects an available reviewer dynamically, prefers a different provider when possible, labels a same-provider fresh-context fallback honestly, and bounds unresolved disagreement rather than requiring artificial consensus.
+For composing several installed skills into one orchestrated multi-agent run — an agent graph where each sub-agent node loads exactly one skill, with fan-out, adversarial verification, and synthesis stages — load the `graph-engineering` skill.
+For reviewing any change boundary — uncommitted work-in-progress, a branch, a stacked layer, a diff, or a pull request — through composable skill lenses (`/panel-review`, one sub-agent per lens, verified findings, one ranked report), or for the PR-readiness evidence gate before creating a PR, load the `panel-review` skill.
 
-**Project onboarding:** Run `/setup` in any new project to detect its tech stack and generate project-level CLAUDE.md, hooks, commands, and PR review agent in one shot. This replaces the need for `/init`.
+**Project onboarding:** Run `/setup` only when the user asks to onboard or
+configure a project and authorizes the generated project files. Ordinary
+read-only or narrowly scoped work does not trigger setup.
 
-**Project-level hooks:** Projects should add a PostToolUse hook in `.claude/settings.json` to run typecheck after Write/Edit on .ts/.tsx files. Use `/setup` to generate this automatically, or use the prettier/eslint hook in this repo's `claude/.claude/settings.json` as a template (note: the curl installer does not install settings.json — only the stow-based install does).
+**Project-level hooks:** When the repository supports hooks and the user authorizes project configuration, consider a PostToolUse typecheck/format hook using the repository's existing toolchain. `/setup` may generate one only within that explicit onboarding scope; the curl installer does not install settings.json.
 
 ## Output Guardrails
 
-- **Write to files, not chat** — When asked to produce a plan, document, or artifact, always persist it to a file. You may also present it inline for approval, but the file is the source of truth.
+- **Honor the requested artifact boundary** — Persist a plan or document only
+  when the user asks for a file or the repository declares that durable owner.
+  Otherwise answer in chat without creating a new source of truth.
 - **Plan-only mode** — When asked for a plan, design, or document only, produce ONLY that artifact. Do not write production code, test code, or make any implementation changes unless explicitly asked.
 - **Incremental output** — When exploring a codebase, produce a first draft of output within 3-4 tool calls. Refine iteratively rather than front-loading all exploration before producing anything.
 
@@ -142,9 +170,12 @@ For an independent second opinion on finished work — spinning up a *different*
 **Quick reference:**
 - ALWAYS FOLLOW TDD for behavior change; keep pure refactors/reductions behaviorally green from passing, proportionate preservation evidence
 - Assess refactoring after every green (but only if adds value)
-- Update CLAUDE.md when introducing meaningful changes
 - Ask "What do I wish I'd known at the start?" after significant changes
-- Document gotchas, patterns, decisions, edge cases while context is fresh
+- Route durable, non-obvious learnings through `expectations` to their actual
+  owner: source/tests, glossary, accepted decision mechanism, maintained docs,
+  active plan, or repository working policy
+- Update CLAUDE.md only for local working policy it is declared to own, and only
+  when the request or repository workflow authorizes that write
 
 For detailed TDD workflow, load the `tdd` skill.
 For refactoring methodology, load the `refactoring` skill.
@@ -171,4 +202,4 @@ Run `agent-browser --help` for all commands.
 
 ## Summary
 
-The key is to write clean, testable, functional code that evolves through small, safe increments. Every change should be driven by a test that describes the desired behavior, and the implementation should be the simplest thing that makes that test pass. When in doubt, favor simplicity and readability over cleverness.
+The key is to write clean, testable, functional code that evolves through small, safe increments. Drive production-behavior changes with a test that describes the desired behavior; use claim-appropriate evidence for documentation, configuration, dependency, generated, CI, and operational changes. The implementation should be the simplest thing that makes the test or other governing check pass. When in doubt, favor simplicity and readability over cleverness.

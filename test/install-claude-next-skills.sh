@@ -29,7 +29,8 @@ pass() {
 
 mkdir -p "$TMPDIR/bin" "$TMPDIR/home"
 NPX_LOG="$TMPDIR/npx.log"
-touch "$NPX_LOG"
+GIT_LOG="$TMPDIR/git.log"
+touch "$NPX_LOG" "$GIT_LOG"
 
 cat > "$TMPDIR/bin/npx" <<'STUB'
 #!/usr/bin/env bash
@@ -37,10 +38,52 @@ printf '%s\n' "$*" >> "$NPX_LOG"
 STUB
 chmod +x "$TMPDIR/bin/npx"
 
+# Record pinned-source fetches instead of hitting the network. show-ref must
+# fail so the installer still rejects refs that are not tags in the checkout.
+cat > "$TMPDIR/bin/git" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$GIT_LOG"
+for arg in "$@"; do
+  [[ "$arg" == "show-ref" ]] && exit 1
+done
+exit 0
+STUB
+chmod +x "$TMPDIR/bin/git"
+
 echo "Testing Next.js external skill installation..."
 echo ""
 
-export NPX_LOG
+export NPX_LOG GIT_LOG
+
+EXACT_COMMIT=$(git -C "$REPO_ROOT" rev-parse --verify HEAD)
+
+set +e
+BRANCH_OUTPUT=$(HOME="$TMPDIR/home" PATH="$TMPDIR/bin:$PATH" \
+  "$REPO_ROOT/install-claude.sh" --skills-only --version develop \
+    --no-external --no-impeccable 2>&1)
+BRANCH_STATUS=$?
+MISSING_OUTPUT=$(HOME="$TMPDIR/home" PATH="$TMPDIR/bin:$PATH" \
+  "$REPO_ROOT/install-claude.sh" --version 2>&1)
+MISSING_STATUS=$?
+set -e
+
+if [[ $BRANCH_STATUS -ne 0 ]] && printf '%s' "$BRANCH_OUTPUT" | grep -q 'not a full commit SHA or a tag'; then
+  pass "moving branch names are rejected before installation"
+else
+  fail "installer must reject arbitrary branch names"
+fi
+
+if [[ $MISSING_STATUS -ne 0 ]] && printf '%s' "$MISSING_OUTPUT" | grep -q -- '--version requires a value'; then
+  pass "missing --version value is rejected"
+else
+  fail "installer must validate the --version operand"
+fi
+
+if [[ ! -s "$NPX_LOG" ]]; then
+  pass "invalid refs never invoke the skills CLI"
+else
+  fail "ref validation must happen before npx"
+fi
 
 HOME="$TMPDIR/home" \
 PATH="$TMPDIR/bin:$PATH" \
@@ -49,6 +92,7 @@ PATH="$TMPDIR/bin:$PATH" \
     --no-impeccable \
     --no-claude-code \
     --agent codex \
+    --version "$EXACT_COMMIT" \
   > "$TMPDIR/output"
 
 assert_npx_call() {
@@ -71,8 +115,45 @@ assert_output() {
   fi
 }
 
-assert_npx_call "--yes skills add vercel-labs/next-skills -g -a codex -s * -y"
-assert_output "vercel-labs/next-skills"
+if grep -Eq 'add [^ ]*skills-src-vercel-next\.js[^ ]*/skills -g -a codex -s next-cache-components-optimizer next-cache-components-adoption --copy -y' "$NPX_LOG"; then
+  pass "Next.js skills install from the fetched skills/ directory with the reviewed names"
+else
+  fail "Next.js skills must install from a local pinned fetch of vercel/next.js skills/"
+fi
+assert_output "vercel/next.js"
+
+if grep -q 'sparse-checkout set --no-cone skills' "$GIT_LOG" &&
+   grep -q 'fetch --quiet --depth 1 --filter=blob:none origin ae1e53a11f5379e715096b829178f4df92d35044' "$GIT_LOG"; then
+  pass "vercel/next.js fetch is sparse, shallow, and pinned to the reviewed commit"
+else
+  fail "vercel/next.js must be fetched sparsely at the reviewed commit, never as the whole repository"
+fi
+
+if grep -Eq 'add [^ ]*(addyosmani/web-quality-skills|vercel|pbakaus/impeccable|mattpocock/skills|coreyhaines31/marketingskills|herdrdev/herdr)[^ ]* .* -s \* ' "$NPX_LOG"; then
+  fail "external sources must never install an undeclared wildcard set"
+else
+  pass "external sources install only reviewed names"
+fi
+
+if grep -Eq 'add [^ ]*#[0-9a-f]{40}( |$)' "$NPX_LOG" || grep -Eq 'add https?://' "$NPX_LOG"; then
+  fail "commit-pinned sources must reach the skills CLI as local fetched paths (clone rejects SHAs; archives hit size caps)"
+else
+  pass "every source reaches the skills CLI as a local pinned fetch"
+fi
+
+FIRST_PARTY_CALL=$(grep -E 'add [^ ]*skills-src-citypaul-\.dotfiles' "$NPX_LOG" || true)
+while IFS= read -r skill_file; do
+  skill_name=$(basename "$(dirname "$skill_file")")
+  if [[ " $FIRST_PARTY_CALL " != *" $skill_name "* ]]; then
+    fail "first-party manifest missing $skill_name"
+  fi
+done < <(find "$REPO_ROOT/claude/.claude/skills" -mindepth 2 -maxdepth 2 -name SKILL.md -print)
+
+if [[ -n "$FIRST_PARTY_CALL" ]] && grep -q "fetch --quiet --depth 1 origin $EXACT_COMMIT" "$GIT_LOG" && [[ "$FIRST_PARTY_CALL" != *" -s * "* ]]; then
+  pass "first-party source revision and complete name set are explicit"
+else
+  fail "first-party install must use a pinned source and declared names"
+fi
 
 echo ""
 

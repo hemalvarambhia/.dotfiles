@@ -31,7 +31,7 @@ Do not impose it on domain-specific policy, a small transparent helper, one-off 
 
 ## Operating Contract
 
-- Establish the job and hard constraints before shopping. If behavior is still ambiguous, return to `specification` or `grill-me`.
+- Establish the job and hard constraints before shopping. If behavior is still ambiguous, return to `specification`. When an installed `grill-me` skill is available, it may pressure-test the decision tree; otherwise ask one focused question at a time until the hard constraints are clear.
 - Inspect the repository and its existing capabilities before searching externally.
 - Treat current versions, maintenance, security, support, pricing, and licenses as volatile. Verify live candidates; never rely only on model memory.
 - Use primary technical evidence for claims. Popularity and marketing can identify candidates but cannot select them.
@@ -152,7 +152,7 @@ Route the selected implementation:
 - source/package placement and enforcement: `structure-codebase`;
 - replacing selected custom machinery with net subtraction: `reduce-system-complexity`;
 - delivery sequencing: `planning`;
-- new or changed behavior: `tdd`, `testing`, `mutation-testing`, and `refactoring`;
+- new or changed behavior: `tdd`, `testing`, and `refactoring` during implementation, then `mutation-testing` once for the accumulated change at PR readiness;
 - final high-stakes decision review: `double-check`.
 
 ## Re-evaluation Triggers

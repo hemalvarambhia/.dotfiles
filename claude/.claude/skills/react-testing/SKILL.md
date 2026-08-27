@@ -1,11 +1,15 @@
 ---
 name: react-testing
-description: React component testing patterns including components, hooks, context, and forms. Covers Vitest Browser Mode with vitest-browser-react (preferred) and @testing-library/react. Use when testing React applications. For general UI testing patterns, see the front-end-testing skill.
+description: React component testing patterns including components, hooks, context, and forms. Covers Vitest Browser Mode with vitest-browser-react and @testing-library/react. Use when testing React applications. For general UI testing patterns, see the front-end-testing skill.
 ---
 
 # React Testing
 
 For general UI testing patterns (queries, events, async, accessibility, MSW), load the `front-end-testing` skill. For TDD workflow, load the `tdd` skill.
+
+For flow logic driving the component, load `xstate`: the machine is tested headlessly and the component test touches only the DOM, so a component test must never assert machine state. If the component under test holds a `submitting`/`isLoading` flag in `useState`, that is the signal the flow escaped its machine — `xstate` owns that call. For performance changes to the same code, load `react-performance`, whose rule is that behaviour tests stay unchanged and green.
+
+Follow the `tdd` skill's canonical fast-feedback and watcher-lifecycle policy plus the `front-end-testing` skill's browser-specific differences. React adds no separate Vitest graph guarantee: prefer the repository-owned watcher, use diff-selected watch only under the canonical version/configuration proof, and keep every affected app/package consumer eligible through the root graph. Exact files remain RED/debug-only. At PR readiness, stop watchers and apply the target repository's mutation policy plus complete non-watch UI/project gate.
 
 **Deep-dive resources** are in the `resources/` directory. Load them on demand:
 
@@ -15,16 +19,22 @@ For general UI testing patterns (queries, events, async, accessibility, MSW), lo
 
 ---
 
-## Vitest Browser Mode with React (Preferred)
+## Vitest Browser Mode with React
 
-**Always prefer `vitest-browser-react` over `@testing-library/react`.** Tests run in a real browser, giving production-accurate rendering, events, and CSS.
+Prefer `vitest-browser-react` when the claim depends on real rendering,
+events, focus, CSS, accessibility, or browser APIs and the repository supports
+the harness or the added cost is justified. Keep an existing stable
+`@testing-library/react`/jsdom harness, or use a lighter environment, when it
+already proves pure hook, provider, or component logic.
 
 ### Setup
 
-Extend the Browser Mode config from the `front-end-testing` skill with the React plugin and `vitest-browser-react`:
+Extend the Browser Mode config from the `front-end-testing` skill with the React
+plugin and `vitest-browser-react`. Apply that skill's repository-package-manager,
+exact-version, authorization, and local-binary setup policy:
 
 ```bash
-npm install -D vitest @vitest/browser-playwright vitest-browser-react @vitejs/plugin-react
+<repo-pm> add --save-dev vitest@<reviewed-version> @vitest/browser-playwright@<reviewed-version> vitest-browser-react@<reviewed-version> @vitejs/plugin-react@<reviewed-version>
 ```
 
 ```typescript
@@ -195,21 +205,25 @@ test('should catch errors with error boundary', async () => {
   // Suppress console.error noise for this test
   const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-  const screen = await render(
-    <ErrorBoundary fallback={<div>Something went wrong</div>}>
-      <ThrowsError />
-    </ErrorBoundary>
-  )
+  try {
+    const screen = await render(
+      <ErrorBoundary fallback={<div>Something went wrong</div>}>
+        <ThrowsError />
+      </ErrorBoundary>
+    )
 
-  await expect.element(screen.getByText(/something went wrong/i)).toBeVisible()
-
-  spy.mockRestore()
+    await expect.element(screen.getByText(/something went wrong/i)).toBeVisible()
+  } finally {
+    spy.mockRestore()
+  }
 })
 ```
 
 ### Testing Portals
 
 ```tsx
+import { page } from 'vitest/browser'
+
 test('should render modal in portal', async () => {
   const screen = await render(<Modal isOpen={true}>Modal content</Modal>)
 
@@ -291,9 +305,13 @@ await render(<MyComponent />)
 
 **Why:** Shallow rendering hides integration bugs between parent/child components.
 
-### 4. Shared renders and manual cleanup
+### 4. Shared renders and cleanup ownership
 
-The beforeEach-render and manual `cleanup()` anti-patterns apply to React exactly as to any UI test — see the `front-end-testing` skill (Core Anti-Patterns). Use a factory function per test; cleanup is automatic.
+Shared mutable render state is the defect, not a lifecycle hook. An isolated
+`beforeEach` may create fresh state for each non-concurrent test; use a helper
+only when repeated or nested setup becomes clearer. Testing Library cleanup is
+automatic only when the harness provides its expected global `afterEach`;
+otherwise register an explicit `afterEach(() => cleanup())` in test setup.
 
 ---
 
@@ -301,19 +319,20 @@ The beforeEach-render and manual `cleanup()` anti-patterns apply to React exactl
 
 React-specific checks:
 
-- [ ] **Preferred**: Using `vitest-browser-react` with Vitest Browser Mode (real browser)
-- [ ] **Fallback**: Using `@testing-library/react` if Browser Mode not yet configured (see `resources/testing-library-react-legacy.md`)
+- [ ] Use `vitest-browser-react` when the claim needs browser-observable behavior and repository support/cost fit
+- [ ] Keep `@testing-library/react` when the stable lighter harness proves the component or hook contract (see `resources/testing-library-react-legacy.md`)
 - [ ] All Playwright/Browser Mode tests are idempotent (no shared state between tests)
 - [ ] `render()`/`renderHook()` awaited (they are async in vitest-browser-react)
 - [ ] Using `renderHook()` for custom hooks, with its returned `act` for state updates
 - [ ] Using `wrapper` option for context providers
 - [ ] No manual `act()` around renders or locator interactions
-- [ ] No manual `cleanup()` calls (automatic)
+- [ ] Cleanup is either verified automatic for this harness or registered once in test setup
 - [ ] MSW via `setupWorker`/`worker.use()` in Browser Mode (not `setupServer`)
 - [ ] Testing component output, not internal state
-- [ ] Using factory functions, not `beforeEach` render
+- [ ] Setup is isolated per test; lifecycle hooks may create fresh state, and helpers are used only when repeated or nested setup becomes clearer
 - [ ] Using `expect.element()` for auto-retrying assertions (Browser Mode)
 - [ ] RSCs tested via e2e or extracted logic, not Browser Mode component tests
 - [ ] Following TDD workflow (see `tdd` skill)
+- [ ] GREEN/REFACTOR used complete affected feedback derived by the runner, workspace orchestrator, or repository mapping—or the documented widened fallback when no reliable graph exists—rather than hand-picked test files; the complete repository PR test gate is current and includes the full configured UI suite
 - [ ] Using general UI testing patterns (see `front-end-testing` skill)
-- [ ] Using test factories for data (see `testing` skill)
+- [ ] Factories are used when repeated or nested data becomes clearer; simple one-off values stay inline (see `testing` skill)

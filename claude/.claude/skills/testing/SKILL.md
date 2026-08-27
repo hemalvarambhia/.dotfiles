@@ -5,13 +5,43 @@ description: Testing patterns for behavior-driven tests. Use when writing tests,
 
 # Testing Patterns
 
-For verifying test effectiveness through mutation analysis, load the `mutation-testing` skill. Use its mutator rules while planning and writing tests, not only after tests exist. For evaluating test quality against Dave Farley's properties, load the `test-design-reviewer` skill.
+For verifying test effectiveness through mutation analysis, load the `mutation-testing` skill. Use its mutator rules while planning and writing tests, but defer the automated mutation harness until the end-of-phase PR-readiness gate. For evaluating test quality against Dave Farley's properties, load the `test-design-reviewer` skill.
 
 ## Core Principle
 
-**Test behavior, not implementation.** 100% coverage through business behavior, not implementation details.
+**Test behavior, not implementation.** Coverage helps find unexercised code; the repository owns any threshold, and a percentage does not replace meaningful assertions.
 
-**Example:** Validation code in `payment-validator.ts` gets 100% coverage by testing `processPayment()` behavior, NOT by directly testing validator functions.
+**Example:** Exercise validation through `processPayment()` when that is the contract under test, rather than testing an internal validator only to move a coverage number.
+
+---
+
+## Fast, Relevant Test Execution
+
+Follow the `tdd` skill's canonical fast-feedback, watcher lifecycle, process cleanup, monorepo, final-gate, and repository-authority policy. For Vitest seed semantics and reusable-command proof, read its [resources/vitest-watch-feedback.md](../tdd/resources/vitest-watch-feedback.md).
+
+Start with an exact selector for RED. For GREEN/REFACTOR, prefer a behaviorally proven repository-owned watcher, then the runner/orchestrator-derived affected scope or affected one-shot. A repository-owned command may deliberately run its complete relevant tier once to seed the runtime graph. Do not hand-pick a smaller ongoing scope, accept zero-test evidence, leave a watcher behind, or substitute watch mode for the complete non-watch PR gate.
+
+Inspect project scripts and installed runner help rather than guessing flags. Representative runner-specific choices:
+
+Preference order:
+
+1. Tested repository-owned watch/affected command.
+2. Native VCS-aware selection when the installed runner and repository configuration have proven its watch behavior.
+3. Native dependency-aware selection from a complete, mechanically derived changed-source list.
+4. Runner/orchestrator-selected affected packages/projects, including transitive dependents.
+5. Exact test file/name only for proving RED or debugging, followed by one of the broader affected scopes for GREEN.
+
+| Runner | GREEN/REFACTOR affected scope | RED/debug-only selector |
+|---|---|---|
+| Vitest | Repository-owned watcher first. Otherwise use `vitest --changed <real-base> --watch` only under the `tdd` skill's version/configuration proof conditions; for one-shot use `--run`. Use `vitest related <all-changed-source-paths>` only when that list is derived mechanically | `vitest run <test-file> -t <name>` or exact-file watch |
+| Jest | `jest --watch`, adding `--changedSince=<base>` when the task spans commits; for one-shot use `--onlyChanged`, `--changedSince=<base>`, or `--findRelatedTests <all-changed-source-paths>` with watch disabled | `jest --runTestsByPath <test-file> -t <name>` |
+| pytest | Use an existing repository affected/watch task. Without one, run the complete owning package/suite plus known consumers and widen when dependency impact is uncertain | `pytest path/to/test_file.py::test_name` or `pytest -k <name> <path>` |
+| Playwright Test | Prefer the repository script or `playwright test --only-changed[=<real-base>]` as a runner-selected affected one-shot. A mechanically derived complete affected-project set may be supplied with project filters. For runtime app code not imported by tests, dynamic/non-import dependencies, or shared global inputs, use the repository-mapped affected journey/project set and widen when uncertain | A file, `--grep`, `--last-failed`, or hand-picked project filter used only to prove RED or repair a known failure |
+| Go / Rust / JVM | Use the repository's existing affected/watch task or a dependency-graph-derived package/module set including transitive consumers | Exact package/class/test-name selectors chosen only to prove RED or debug |
+
+If the runner lacks a dependency graph, use its exact selector only for RED/debugging. For GREEN/REFACTOR, run the behavior test plus every known consumer and the complete owning suite/project set; widen when impact is uncertain. Do not mistake “changed test files” for “all relevant tests.” The target is the tests affected by changed behavior, whether or not those test files changed.
+
+Vitest `related` implicitly permits an empty result to pass. Require at least one expected test to execute. Vitest `--standalone` is not a TDD substitute; follow the canonical TDD policy instead.
 
 ---
 
@@ -21,15 +51,15 @@ When planning or writing tests, automatically scan the intended behavior and cha
 
 Load that resource when the code under test includes conditionals, arithmetic, equality, boolean logic, array/string operations, optional chaining, or meaningful side effects. Use it to identify likely surviving mutants before the Stryker run.
 
-When the scan finds an obvious gap, add or strengthen a behavior test immediately. When the gap depends on product or domain judgment, use the harness's ask-question facility before choosing a test. Ask one concise question with concrete choices, explain the potential mutant, and state the tradeoff.
+When the scan finds an obvious gap, add or strengthen a behavior test immediately. When the gap depends on product or domain judgment, use the host's structured question facility when available; otherwise ask one concise plain-text question. Give concrete choices, explain the potential mutant, and state the tradeoff.
 
 Example ask-question prompt:
 
 ```markdown
-The discount rule uses `subtotal >= 100`, but current tests only cover `150`.
-Should the exact `100` boundary receive the discount?
+The bulk path uses `items.length >= 100`, but current tests only cover `150`.
+Should the exact `100` boundary use the bulk path?
 - Yes: add a boundary test for `100`
-- No: change/confirm the rule as `subtotal > 100`
+- No: change/confirm the rule as `items.length > 100`
 - Unspecified: document the behavior as intentionally not guaranteed
 ```
 
@@ -37,14 +67,26 @@ Do not ask when the gap is plainly a missing assertion, missing boundary, missin
 
 ---
 
-## Test Through Public API Only
+## Test Through the Subject's Public Interface
 
-Never test implementation details. Test behavior through public APIs.
+Never test implementation details. Test behavior through the subject's public interface — **at the layer named by the test's claim**.
 
 **Why this matters:**
 - Tests remain valid when refactoring
 - Tests document intended behavior
 - Tests catch real bugs, not implementation changes
+
+"Public API" does not mean "the HTTP API": every layer has its own public interface, and the claim under test decides which one owns the evidence.
+
+| Claim under test | Public interface that owns the evidence |
+|---|---|
+| Domain/application behavior | Exported domain/application operation |
+| HTTP API contract | HTTP client and documented request/response contract |
+| Component behavior | Rendered component DOM and its public props/events |
+| Browser/frontend behavior | Navigation, accessible UI, browser lifecycle, and browser-observed network |
+| User journey | Accessible user actions and user-visible outcomes across the real journey |
+
+An HTTP endpoint can be public and still be the **wrong** interface for a browser claim: a "user creates X" test that calls the endpoint directly proves an HTTP contract while bypassing the UI handler, cookie policy, CSRF/Fetch Metadata checks, redirects, loading/error state, and rendering — and stays green when any of those break. Test names, comments, CI step labels, docs, and PR prose must state the **narrowest evidence actually proved**. For the E2E evidence model, request observation, and the direct-transport audit, load the `front-end-testing` skill's `resources/playwright-e2e.md`.
 
 ### Examples
 
@@ -73,7 +115,7 @@ it('should set isValidated flag', () => {
 ✅ **CORRECT - Testing behavior through public API:**
 ```typescript
 it('should reject negative amounts', () => {
-  const payment = getMockPayment({ amount: -100 });
+  const payment = getMockPayment({ amountMinorUnits: -100, currency: 'GBP' });
   const result = processPayment(payment);
   expect(result).toEqual({ success: false, error: expect.stringContaining('Amount must be positive') });
 });
@@ -85,7 +127,7 @@ it('should reject invalid CVV', () => {
 });
 
 it('should process valid payments', () => {
-  const payment = getMockPayment({ amount: 100, cvv: '123' });
+  const payment = getMockPayment({ amountMinorUnits: 10_000, currency: 'GBP', cvv: '123' });
   const result = processPayment(payment);
   expect(result).toEqual({ success: true, data: { transactionId: expect.any(String) } });
 });
@@ -95,21 +137,21 @@ Assert on the whole `Result` value rather than reaching for `result.error`/`resu
 
 ---
 
-## Coverage Through Behavior
+## Reach Code Through Behavior
 
-Validation code gets 100% coverage by testing the behavior it protects:
+Validation code should be reached by tests of the behavior it protects:
 
 ```typescript
 // Tests covering validation WITHOUT testing validator directly
 describe('processPayment', () => {
   it('should reject negative amounts', () => {
-    const payment = getMockPayment({ amount: -100 });
+    const payment = getMockPayment({ amountMinorUnits: -100, currency: 'GBP' });
     const result = processPayment(payment);
     expect(result.success).toBe(false);
   });
 
   it('should reject amounts over 10000', () => {
-    const payment = getMockPayment({ amount: 15000 });
+    const payment = getMockPayment({ amountMinorUnits: 1_500_000, currency: 'GBP' });
     const result = processPayment(payment);
     expect(result.success).toBe(false);
   });
@@ -121,24 +163,24 @@ describe('processPayment', () => {
   });
 
   it('should process valid payments', () => {
-    const payment = getMockPayment({ amount: 100, cvv: '123' });
+    const payment = getMockPayment({ amountMinorUnits: 10_000, currency: 'GBP', cvv: '123' });
     const result = processPayment(payment);
     expect(result.success).toBe(true);
   });
 });
 
-// ✅ Result: payment-validator.ts has 100% coverage through behavior
+// ✅ Result: validation branches are exercised through the public behavior
 ```
 
 **Key insight:** When coverage drops, ask **"What business behavior am I not testing?"** not "What line am I missing?"
 
 ---
 
-## Don't Extract for Testability
+## Do Not Extract Merely To Mirror Tests
 
-Never extract a function into its own file purely to give it its own unit test. Extract for readability (a descriptive name clarifies intent), for DRY (same **knowledge** used in multiple places — see the `refactoring` skill's "DRY = Knowledge, Not Code" rule), or for separation of concerns. Not for testability.
+Do not extract a function into its own file merely to give it a matching unit test. Extract when it creates a coherent contract or seam, improves readability, represents shared **knowledge** (see the `refactoring` skill), or separates responsibilities. If difficulty testing a behavior exposes a real dependency seam, use `finding-seams` rather than hiding the problem behind implementation-detail tests.
 
-If code is inline in a function, it gets coverage through that function's behavioral tests. Every layer has behavioral tests — domain functions have vitest unit tests, components have browser tests, pages have integration tests. There is no gap.
+Inline code can often be exercised through its consumer's behavioral tests. If that makes failures too broad or a dependency impossible to control, treat the difficulty as design evidence and introduce a coherent seam rather than a helper created only to mirror a test file.
 
 The anti-pattern is creating a 1:1 mapping between extracted helpers and test files (see "No 1:1 Mapping" below). The extracted helper is an implementation detail of its consumer. Test the consumer's behavior.
 
@@ -172,20 +214,21 @@ it('returns claimed gifts in yourClaims and unclaimed in available', async () =>
 });
 ```
 
-**When extraction IS justified (DRY):** If the same filtering logic is used by multiple consumers with the same business meaning, extract it. But test it through each consumer's behavior, not as an isolated unit.
+**When extraction is justified:** If the filtering has a coherent reusable meaning or several consumers depend on it, extract it. Test at the narrowest public boundary that honestly owns the behavior; consumer-level tests may still be needed for integration.
 
 ---
 
 ## Test Factory Pattern
 
-For test data, use factory functions with optional overrides.
+Use factory functions with optional overrides when test data is repeated, nested,
+or otherwise clearer behind a named fixture builder. Keep one-off values inline.
 
 ### Core Principles
 
-1. Return complete objects with sensible defaults
-2. Accept `Partial<T>` overrides for customization
-3. Validate with real schemas (don't redefine)
-4. NO `let`/`beforeEach` - use factories for fresh state
+1. Return objects valid for the scenario, with intentional invalidity made explicit
+2. Use typed overrides when that fits the language and model
+3. Reuse a production schema when the contract already has one; do not invent a schema only for a factory
+4. Prefer fresh state per test. Lifecycle hooks are fine when setup is isolated and cleanup is reliable
 
 ### Basic Pattern
 
@@ -226,10 +269,7 @@ const getMockUser = (overrides?: Partial<User>): User => {
 };
 ```
 
-**Why validate with schema?**
-- Ensures test data is valid according to production schema
-- Catches breaking changes early (schema changes fail tests)
-- Single source of truth (no schema redefinition)
+**Why reuse an existing schema?** It keeps contract-shaped fixtures aligned with the production boundary and catches schema changes without redefining the contract. Pure internal values and deliberately invalid fixtures may not need schema parsing.
 
 **Tip:** For factories where only a subset of fields are relevant, use `Partial<Pick<T, 'field1' | 'field2'>>` for the overrides parameter to constrain what callers can customize (a bare `Pick` keeps every picked field required, so overriding just one field would not compile).
 
@@ -242,7 +282,7 @@ const getMockItem = (overrides?: Partial<Item>): Item => {
   return ItemSchema.parse({
     id: 'item-1',
     name: 'Test Item',
-    price: 100,
+    weightGrams: 100,
     ...overrides,
   });
 };
@@ -261,33 +301,30 @@ const getMockOrder = (overrides?: Partial<Order>): Order => {
 it('calculates total with multiple items', () => {
   const order = getMockOrder({
     items: [
-      getMockItem({ price: 100 }),
-      getMockItem({ price: 200 }),
+      getMockItem({ weightGrams: 100 }),
+      getMockItem({ weightGrams: 200 }),
     ],
   });
-  expect(calculateTotal(order)).toBe(300);
+  expect(calculateTotalWeightGrams(order)).toBe(300);
 });
 ```
 
 ### Anti-Patterns
 
-❌ **WRONG: Using `let` and `beforeEach`**
+❌ **WRONG: One mutable object shared by the suite**
 ```typescript
-let user: User;
-beforeEach(() => {
-  user = { id: 'user-123', name: 'Test User', ... };  // Shared mutable state!
-});
+const user: User = { id: 'user-123', name: 'Test User', ... };
 
 it('test 1', () => {
-  user.name = 'Modified User';  // Mutates shared state
+  user.name = 'Modified User';
 });
 
 it('test 2', () => {
-  expect(user.name).toBe('Test User');  // Fails! Modified by test 1
+  expect(user.name).toBe('Test User');  // Order-dependent failure
 });
 ```
 
-✅ **CORRECT: Factory per test**
+✅ **CORRECT: Fresh state per test**
 ```typescript
 it('test 1', () => {
   const user = getMockUser({ name: 'Modified User' });  // Fresh state
@@ -345,7 +382,7 @@ const getMockUser = (overrides?: Partial<User>): User => {
 
 ## Coverage Theater Detection
 
-Watch for these patterns that give fake 100% coverage:
+Watch for patterns that execute code without proving behavior:
 
 ### Pattern 1: Mock the function being tested
 
@@ -361,7 +398,7 @@ it('calls validator', () => {
 ✅ **CORRECT** - Test actual behavior:
 ```typescript
 it('should reject invalid payment', () => {
-  const payment = getMockPayment({ amount: -100 });
+  const payment = getMockPayment({ amountMinorUnits: -100, currency: 'GBP' });
   const result = validate(payment);
   expect(result).toEqual({ success: false, error: expect.stringContaining('Amount must be positive') });
 });
@@ -393,18 +430,17 @@ it('should process payment and return transaction ID', () => {
 
 ❌ **WRONG** - Testing implementation, not behavior:
 ```typescript
-it('sets amount', () => {
-  payment.setAmount(100);
-  expect(payment.getAmount()).toBe(100); // Trivial
+it('sets retry limit', () => {
+  worker.setRetryLimit(3);
+  expect(worker.getRetryLimit()).toBe(3); // Trivial
 });
 ```
 
 ✅ **CORRECT** - Test meaningful behavior:
 ```typescript
-it('should calculate total with tax', () => {
+it('should calculate shipment weight', () => {
   const order = createOrder({ items: [item1, item2] });
-  const total = order.calculateTotal();
-  expect(total).toBe(230); // 200 + 15% tax
+  expect(order.calculateWeightGrams()).toBe(230);
 });
 ```
 
@@ -423,12 +459,12 @@ it('validates payment', () => {
 ```typescript
 describe('validate payment', () => {
   it('should reject negative amounts', () => {
-    const payment = getMockPayment({ amount: -100 });
+    const payment = getMockPayment({ amountMinorUnits: -100, currency: 'GBP' });
     expect(validate(payment).success).toBe(false);
   });
 
   it('should reject amounts over limit', () => {
-    const payment = getMockPayment({ amount: 15000 });
+    const payment = getMockPayment({ amountMinorUnits: 1_500_000, currency: 'GBP' });
     expect(validate(payment).success).toBe(false);
   });
 
@@ -446,9 +482,9 @@ describe('validate payment', () => {
 
 ---
 
-## No 1:1 Mapping Between Tests and Implementation
+## No Automatic 1:1 Mapping Between Tests and Implementation
 
-Don't create test files that mirror implementation files.
+Do not mirror every implementation file by reflex. Organize tests around stable behavior or contracts; a 1:1 file is fine when that file itself is the public unit under test.
 
 ❌ **WRONG:**
 ```
@@ -480,13 +516,17 @@ tests/
 
 When writing tests, verify:
 
-- [ ] Testing behavior through public API (not implementation details)
+- [ ] Testing behavior through the subject's public interface at the layer the claim names (not implementation details, not a lower layer standing in for it)
 - [ ] No mocks of the function being tested
 - [ ] No tests of private methods or internal state
-- [ ] Factory functions return complete, valid objects
-- [ ] Factories validate with real schemas (not redefined in tests)
-- [ ] Using Partial<T> for type-safe overrides
-- [ ] No `let`/`beforeEach` - use factories for fresh state
+- [ ] Factory functions return scenario-valid objects and mark intentional invalidity
+- [ ] Existing production schemas are reused where appropriate, not redefined in tests
+- [ ] Overrides are type-safe for the language and model
+- [ ] Test state is isolated; lifecycle setup has reliable cleanup
 - [ ] Edge cases covered (not just happy path)
 - [ ] Tests would pass even if implementation is refactored
-- [ ] No 1:1 mapping between test files and implementation files
+- [ ] Test organization follows stable behavior or contracts rather than implementation shape by default
+- [ ] TDD inner-loop runs use focused watch or related/affected selectors rather than repeated full suites
+- [ ] GREEN/REFACTOR uses the complete affected scope derived by the runner, workspace orchestrator, or repository mapping; when no reliable graph exists, use the documented owning-suite-plus-known-consumers fallback and widen on uncertainty, never hand-picked test files
+- [ ] When using a watcher, new tests join it; otherwise the affected one-shot is rerun after test creation. Every claimed result executed at least one expected test without `--passWithNoTests`
+- [ ] The watcher and its child processes were stopped; a completed non-watch full-suite run is current for the final tree, and mutation or alternate evidence satisfies the target repository's policy

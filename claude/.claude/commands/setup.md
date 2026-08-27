@@ -28,7 +28,7 @@ Set up this project for Claude Code using the global framework. Analyze the proj
 
 1. **Detect tech stack**: language, framework, package manager, test runner, linter, formatter, build tool
 2. **Detect TypeScript strict config**: check for `strict`, `noUncheckedIndexedAccess`, `noImplicitAny` etc.
-3. **Detect CI pipeline**: what CI system, what steps run, what commands
+3. **Detect CI pipeline**: what CI system, steps, and commands run; whether stacks will use GitHub-native linking or ordinary dependent PRs; and whether required merge-queue checks handle `merge_group`
 4. **Detect existing config**: check for existing CLAUDE.md, .claude/ directory, hooks, commands
 5. **Check for DDD**: look for glossary files, domain directories, bounded context structure
 6. **Check for hexagonal architecture**: look for ports/, adapters/, domain/ directory structure
@@ -75,17 +75,12 @@ Generate a PostToolUse hook for typecheck after Write/Edit on .ts/.tsx files:
 
 Use the actual typecheck command detected from the project (e.g., `pnpm typecheck`, `npx tsc --noEmit`, `yarn tsc --noEmit`).
 
-### 3. Project /pr command (`.claude/commands/pr.md`)
+### 3. PR workflow notes (in the project CLAUDE.md)
 
-Generate a project-specific PR command that runs the detected quality gates before creating a PR:
-- Typecheck command
-- Lint command
-- Test command
-- Build command (if applicable)
+Do not generate a project `/pr` command or a project PR-review agent — PR creation is ordinary agent-led work gated by the global `panel-review` skill's `references/pr-readiness.md`, and reviews run through the global `/panel-review` skill, which auto-detects project traits. Instead, record in the generated project CLAUDE.md:
 
-### 4. Project pr-reviewer agent (`.claude/agents/pr-reviewer.md`)
-
-Run `/generate-pr-review` to create a project-specific PR review agent, OR generate one directly using detected project conventions.
+- The detected quality-gate commands (typecheck, lint, test, build) so the PR-readiness gate can run them
+- Any project-specific review lenses `/panel-review` should include by default (e.g. `hexagonal-architecture`, `domain-driven-design`) based on the detected architecture
 
 ## Constraints
 

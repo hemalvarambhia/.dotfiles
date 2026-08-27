@@ -22,15 +22,17 @@ This skill is based on Tim Ottinger's [Splitting Stories - A Resource Listicle](
 
 ## How This Fits With Other Skills
 
-Use `story-splitting` **before** `planning` when the input is a large story, epic, feature idea, roadmap item, or backlog item. This skill discovers small valuable child stories. The `planning` skill then sequences one selected child story into PR-sized implementation slices with TDD execution details.
+Use `story-splitting` **before** `planning` when the input is a large story, epic, feature idea, roadmap item, or backlog item. This skill discovers small valuable child stories. The `planning` skill then sequences one selected child story into implementation slices with evidence and delivery details.
+
+Keep story boundaries vertical regardless of the repository's implementation or pull-request workflow. Never turn database, API, UI, and tests into separate backlog outcomes.
 
 Use `find-gaps` **after** a split or plan exists when you need to tighten missing states, acceptance criteria, edge cases, or unverifiable language. If `find-gaps` discovers that the plan is still horizontal or too large, return here and split again.
 
-Use `grill-me` when the issue is unresolved product or design decision-making rather than splitting mechanics; its one-question-at-a-time interview can clarify the decision tree before or after this skill proposes slices.
+Use `grill-me` when installed for unresolved product or design decision-making rather than splitting mechanics. Otherwise use `specification` and ask one focused question at a time before or after this skill proposes slices.
 
 Use `storyboard` when the work spans multiple UX surfaces or mock states; the storyboard can reveal missing screens and flow gaps that become child stories. Use design skills such as `shape`, `critique`, and `polish` to improve the mocks themselves, not to replace product slicing.
 
-This skill must not drive implementation directly. When a selected child story is ready to implement, load `planning` first. Planning must turn that child story into implementation slices/stages, and every slice/stage must repeat the full implementation cycle before code changes begin: load `tdd`, `testing`, `mutation-testing`, and `refactoring`; run RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR; then present the work before moving to the next slice. Treat this as a per-slice mandatory handoff, not a one-time feature reminder. Use `finding-seams` and `characterisation-tests` when a slice touches legacy code that cannot yet be tested safely. Use domain and architecture skills (`domain-driven-design`, `hexagonal-architecture`, `api-design`, `cli-design`, `twelve-factor`, `production-parity-skill-builder`) to keep each slice coherent; do not split stories by those technical layers.
+This skill stops at the product split. Defer implementation workflow, TDD, mutation timing, feature-flag policy, pre-PR gates, branch topology, and delivery mechanics to project instructions and the relevant installed skills. Story splitting neither requires nor prohibits a local mutation run or a feature flag. Use domain and architecture skills only when the selected story reaches implementation; do not split stories by those technical layers.
 
 ## Requirement Refinement Pipeline
 
@@ -38,12 +40,13 @@ Use the earliest skill that matches the uncertainty:
 
 | If the problem is... | Use... | Stop when you have... |
 |----------------------|--------|------------------------|
-| "We don't know which decision branch is right." | `grill-me` | A resolved decision tree or a named open decision |
+| "We don't know which decision branch is right." | `grill-me` when installed; otherwise `specification` | A resolved decision tree or a named open decision |
 | "This requirement is too broad or solution-shaped." | `story-splitting` | Independently valuable child stories |
 | "This story/spec/plan/mock has holes." | `find-gaps` | Confirmed artifact updates with testable wording |
-| "We selected a child story and need to build it." | `planning` | PR-sized implementation slices |
+| "We selected a child story and need to build it." | `planning` | Implementation slices with per-slice delivery shapes |
+| "A selected child story needs implementation sequencing." | The project's planning/delivery skills | A repository-compliant implementation and delivery plan |
 
-Do not use `story-splitting` to interrogate every product decision from scratch; use `grill-me` when the decision tree is the real work. Do not use `story-splitting` to produce implementation tasks; use `planning` after a child story is selected. Do not use `find-gaps` before there is an artifact to inspect; use it to harden a split, plan, AC set, or mock spec.
+Do not use `story-splitting` to interrogate every product decision from scratch; use the optional `grill-me` skill or the `specification` fallback when the decision tree is the real work. Do not use `story-splitting` to produce implementation tasks; use `planning` after a child story is selected. Do not use `find-gaps` before there is an artifact to inspect; use it to harden a split, plan, AC set, or mock spec.
 
 ## Core Principles
 
@@ -91,9 +94,9 @@ The first question reveals customer-capability options. The second often jumps s
 
 ### Start With A Primitive Whole
 
-Prefer a tiny, end-to-end, production-quality whole over a polished part. Useful first versions include a walking skeleton, tracer bullet, steel thread, zero-feature release, or minimal spanning application.
+Prefer a tiny, end-to-end whole over a polished part. Useful first versions include an under-featured vertical slice, a structurally uncomposed path, an internal-only capability, or an explicitly labelled disposable tracer.
 
-This first slice should exercise the real production path as far as practical: entry point, domain behavior, persistence or external service, output, deployment, and observability. It may be under-featured, hidden behind a flag, or internal-only, but it should not be throwaway unless explicitly framed as a spike or tracer experiment.
+This first slice should exercise the real behavior path as far as practical. State its release constraint honestly. Whether it uses a feature flag, another release mechanism, or no hiding mechanism at all is a project policy decision. Disposable work must be explicitly labelled as a spike or tracer experiment.
 
 ### Hunt For Bargains
 
@@ -184,7 +187,7 @@ For each child story, capture:
 - **Scope:** what is included
 - **Intentional deferrals:** what is not included yet and why
 - **Acceptance examples:** concrete precondition → trigger → observable-outcome examples (or equivalent testable examples)
-- **Release constraint:** shippable, hidden behind flag, internal-only, demo-only, or not releasable and why
+- **Release constraint:** shippable, internal-only, demo-only, disposable, or otherwise constrained according to project policy—and why
 - **Follow-ups:** stories that add paths, interfaces, data, rules, or quality
 
 Use the user's domain vocabulary. If they say "buyer," write "buyer," not "user."
@@ -242,7 +245,7 @@ Why this first: [value, risk, learning, or bargain]
 [Component splits, unsafe deferrals, unclear ownership, or missing examples]
 
 ## Next Step
-[Usually: load `planning` for the selected first slice, run `find-gaps` on the split, or ask one decision question. If implementing, every planned implementation slice/stage must explicitly require `tdd`, `testing`, `mutation-testing`, and `refactoring` before code changes, then complete RED-GREEN-MUTATE-KILL MUTANTS-REFACTOR before the next slice/stage starts.]
+[Use the project's planning and delivery instructions for the selected first slice, run `find-gaps` on the split when available, or ask one decision question. Do not prescribe TDD, mutation timing, feature flags, or pre-PR gates here.]
 ```
 
 If the user wants an interactive refinement session, ask one high-value question at a time rather than dumping a questionnaire. Start with the question that most changes the split: usually actor, outcome, release constraint, highest-value customer segment, or biggest risk.
